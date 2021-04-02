@@ -21,7 +21,7 @@ cmake_build_type=""
 ups_build_type=""
 if grep -q "prof"  <<< "$root_for_this_build"; then
   cmake_build_type="Release"
-  ups_build_type="prof"
+  ups_build_type="profile"
 elif grep -q "debug"  <<< "$root_for_this_build"; then
   cmake_build_type="Debug"
   ups_build_type="debug"
