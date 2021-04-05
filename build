@@ -150,7 +150,7 @@ getCode() {
 
 clean(){
   echo "Begin clean up. "
-  for dir in KinKal ${buildDirProf} ${buildDirDebug}; do
+  for dir in ${buildDirProf} ${buildDirDebug}; do
     if [[ -d ${dir} ]]; then
       echo "Removing " ${dir}
       /bin/rm -rf ${dir}
