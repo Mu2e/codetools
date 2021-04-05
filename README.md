@@ -85,6 +85,8 @@ and artexternals/KinKal.
 
 * For Jenkins, Ray prefers separate commands for prof/debug not one command to do both
 * For the development environment, Dave is OK with separate commands for prof/debug but would like to do both with a single command.
+* Do not needlessly rerun cmake; check for one of it's artifacts and skip.
+* git clone will fail if the directory KinKal exists and is non-empty. Is it acceptable to count on this or do we want our own check?
 * Is there a better name than KinKal_to_UPS?
 * Should KinKal_to_UPS be installed in UPS?
 * In the case of installing a prebuilt version of KinKal, is there a way to automatically determine the git tag so that it does not need to be given by hand in the install command?
