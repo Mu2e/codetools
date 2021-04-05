@@ -13,9 +13,10 @@ There are command line options to choose intermediate amounts of work.
 
 The simplest example is that you have a working directory that contains 2 directories:
 
-  KinKal build_debug
+>  KinKal build_debug
 
-and you already have a UPS debug version of root set up in the environment.  In that directory do
+
+and you already have a UPS **debug** version of root set up in the environment.  In that directory do
 the following:
 
 * git clone https://github.com/kutschke/KinKal_to_UPS.git
@@ -82,14 +83,17 @@ and artexternals/KinKal.
 
 ## Fixmes, Todos and questions
 
+* For Jenkins, Ray prefers separate commands for prof/debug not one command to do both
+* For the development environment, Dave is OK with separate commands for prof/debug but would like to do both with a single command.
+* Do not needlessly rerun cmake; check for one of it's artifacts and skip.
+* git clone will fail if the directory KinKal exists and is non-empty. Is it acceptable to count on this or do we want our own check?
 * Is there a better name than KinKal_to_UPS?
 * Should KinKal_to_UPS be installed in UPS?
 * In the case of installing a prebuilt version of KinKal, is there a way to automatically determine the git tag so that it does not need to be given by hand in the install command?
 * Add an option to add additional qualifiers to the KinKal product
 * Is it OK that the names build_prof, build_debug are hard coded?  If not, we can make options to define them.
-* Should I add an option to make tar files for installation on cvmfs?
 * What additional checks for corner cases are needed?
 * I need to roll up the return statuses to one overall exit status and update the exit message.
 * Rename the tar.bz2 files to match the scisoft standard.
+* If we do a git checkout of the named tag, we assume that \<tagname\>_branch is a valid git branch name.  Is that safe?
 * What else?
-

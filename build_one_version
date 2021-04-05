@@ -16,22 +16,24 @@ root_for_this_build=$2
 nbuildthreads=$3
 dotest=$4
 
-# cmake and ups spell build types differently; do the translation
+# The convention suggested in the KinKal docs is that
+#  cmake build type Release is built in the directory build_profile
+#  cmake build type Debug is built in the directory build_debug
 cmake_build_type=""
-ups_build_type=""
+local_build_suffix=""
 if grep -q "prof"  <<< "$root_for_this_build"; then
   cmake_build_type="Release"
-  ups_build_type="prof"
+  local_build_suffix="profile"
 elif grep -q "debug"  <<< "$root_for_this_build"; then
   cmake_build_type="Debug"
-  ups_build_type="debug"
+  local_build_suffix="debug"
 else
   echo "Could not understand requested build type derived from the ups ROOT product"
   echo "The ups root version is: " $root_for_this_build
   exit 1
 fi
 
-echo " Begin ${ups_build_type} build "
+echo " Begin ${local_build_suffix} build "
 
 setup mu2e
 setup cmake ${cmake_ver}
@@ -44,8 +46,8 @@ if [[ "$?" != "0" ]]; then
 fi
 ups active
 
-mkdir build_${ups_build_type}
-cd build_${ups_build_type}
+mkdir -p build_${local_build_suffix}
+cd build_${local_build_suffix}
 cmake ../KinKal  -DCMAKE_BUILD_TYPE=${cmake_build_type}
 if [[ "$?" != "0" ]]; then
   exit 4
