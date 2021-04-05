@@ -95,5 +95,6 @@ and artexternals/KinKal.
 * What additional checks for corner cases are needed?
 * I need to roll up the return statuses to one overall exit status and update the exit message.
 * Rename the tar.bz2 files to match the scisoft standard.
+* If we do a git checkout of the named tag, we assume that <tagname>_branch is a valid git branch name.  Is that safe?
 * What else?
 
