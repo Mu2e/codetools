@@ -23,7 +23,7 @@ echo "Running tests in ${PACKAGE_PATH}"
 
 if ! command -v snakemake &> /dev/null
 then
-    if [! -d ".venv" ]; then
+    if [ ! -d ".venv" ]; then
         echo "snakemake could not be found, try installing it in a virtual environment"
         python -m venv .venv
         source .venv/bin/activate
@@ -40,9 +40,10 @@ snakemake -F --keep-going --keep-incomplete --rerun-incomplete -s ${CODETOOLS_PA
 printf '%-20s' "Type "
 printf '%-40s' "Test Name "
 printf '%-10s' "STATUS "
-printf '%-4s' "RC "
+printf '%-6s' "RC "
+printf '%-60s' "Logfile "
 echo ""
-echo "-------------------------------------------------------------------------"
+echo "-------------------------------------------------------------------------------------------------"
 
 for test_name in $(cat all_tests.txt); do
     STATUS="NORUN"
@@ -71,7 +72,8 @@ for test_name in $(cat all_tests.txt); do
     printf '%-20s' "$TEST_TYPE "
     printf '%-40s' "$test_name "
     printf '%-10s' "$STATUS "
-    printf '%-4s' "$RC "
+    printf '%-6s' "$RC "
+    printf '%-60s' "$LOGFILE "
     echo ""
 done
 
