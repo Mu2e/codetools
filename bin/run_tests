@@ -7,7 +7,7 @@ CODETOOLS_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/.
 cd $PACKAGE_PATH || exit 1
 
 if [ ! -f ".tests.yml" ]; then
-    echo ".tests.yml not found in ${PACKAGE_PATH}."
+    echo ".tests.yml not found in ${PACKAGE_PATH}"
     exit 1
 fi
 
@@ -19,7 +19,7 @@ echo "Running tests in ${PACKAGE_PATH}"
     rm *.SUCCESS
     rm *.FAILED
     rm test_results.txt
-} > /dev/null 
+} > /dev/null  2>&1
 
 if ! command -v snakemake &> /dev/null
 then
@@ -74,5 +74,14 @@ for test_name in $(cat all_tests.txt); do
     printf '%-4s' "$RC "
     echo ""
 done
+
+
+{
+    rm -rf .snakemake 
+    rm *.fcl_return_code
+    rm *.script_return_code
+    rm *.SUCCESS
+    rm *.FAILED
+} > /dev/null  2>&1
 
 exit $OVERALL_STATUS

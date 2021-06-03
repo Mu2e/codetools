@@ -60,8 +60,8 @@ rule mu2e_test_fcl:
         """
         set +o pipefail;
         set +e;
-        echo "mu2e -c {params.fcl} -n {params.events} {params.flags} > {wildcards.test_name}.log 2>&1"
-        mu2e -c {params.fcl} -n {params.events} {params.flags} > {wildcards.test_name}.log  2>&1
+        echo "mu2e -c {params.fcl} -n {params.events} {params.flags} > {wildcards.test_name}.log 2>&1" > {wildcards.test_name}.log
+        mu2e -c {params.fcl} -n {params.events} {params.flags} >> {wildcards.test_name}.log  2>&1
         RC=$?
         echo "$RC" > {output.return_code}
         [[ $RC = "0" ]] && touch {wildcards.test_name}.SUCCESS || touch {wildcards.test_name}.FAILED
@@ -86,9 +86,9 @@ rule mu2e_test_script:
     shell: 
         """
         set +o pipefail;
-        set +e;
-        echo "{params.script} {params.flags} > {wildcards.test_name}.log 2>&1"
-        {params.script} {params.flags} > {wildcards.test_name}.log  2>&1
+        set +e; 
+        echo "{params.script} {params.flags} > {wildcards.test_name}.log 2>&1" > {wildcards.test_name}.log
+        {params.script} {params.flags} >> {wildcards.test_name}.log  2>&1
         RC=$?
         echo "$RC" > {output.return_code}
         [[ $RC = "0" ]] && touch {wildcards.test_name}.SUCCESS || touch {wildcards.test_name}.FAILED
