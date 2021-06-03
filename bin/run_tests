@@ -1,0 +1,78 @@
+#!/bin/bash
+
+PACKAGE_PATH="$1"
+CODETOOLS_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../"
+
+
+cd $PACKAGE_PATH || exit 1
+
+if [ ! -f ".tests.yml" ]; then
+    echo ".tests.yml not found in ${PACKAGE_PATH}."
+    exit 1
+fi
+
+echo "Running tests in ${PACKAGE_PATH}"
+
+{
+    rm *.fcl_return_code
+    rm *.script_return_code
+    rm *.SUCCESS
+    rm *.FAILED
+    rm test_results.txt
+} > /dev/null 
+
+if ! command -v snakemake &> /dev/null
+then
+    if [! -d ".venv" ]; then
+        echo "snakemake could not be found, try installing it in a virtual environment"
+        python -m venv .venv
+        source .venv/bin/activate
+        pip install snakemake
+    else
+        source .venv/bin/activate
+    fi
+fi
+
+OVERALL_STATUS=0
+
+snakemake -F --keep-going --keep-incomplete --rerun-incomplete -s ${CODETOOLS_PATH}/mu2etest.smk --cores all --configfile .tests.yml
+
+printf '%-20s' "Type "
+printf '%-40s' "Test Name "
+printf '%-10s' "STATUS "
+printf '%-4s' "RC "
+echo ""
+echo "-------------------------------------------------------------------------"
+
+for test_name in $(cat all_tests.txt); do
+    STATUS="NORUN"
+    RC="n/a"
+    LOGFILE="n/a"
+    TEST_TYPE="n/a"
+    if [ -f "${test_name}.fcl_return_code" ]; then
+        RC=$(cat "${test_name}.fcl_return_code")
+        TEST_TYPE="FCL"
+    fi
+    if [ -f "${test_name}.script_return_code" ]; then
+        RC=$(cat "${test_name}.script_return_code")
+        TEST_TYPE="SCRIPT"
+    fi
+    if [ -f "${test_name}.FAILED" ]; then
+        STATUS="FAIL"
+        OVERALL_STATUS=1
+    fi
+    if [ -f "${test_name}.SUCCESS" ]; then
+        STATUS="PASS"
+    fi
+
+    LOGFILE="${test_name}.log"
+
+    echo "${test_name},${TEST_TYPE},${RC},${STATUS},${LOGFILE}" >> test_results.txt
+    printf '%-20s' "$TEST_TYPE "
+    printf '%-40s' "$test_name "
+    printf '%-10s' "$STATUS "
+    printf '%-4s' "$RC "
+    echo ""
+done
+
+exit $OVERALL_STATUS

@@ -1,3 +1,0 @@
-[
-  {"include": ["<bits/exception.h>", "private", "<exception>", "public"] },
-]
