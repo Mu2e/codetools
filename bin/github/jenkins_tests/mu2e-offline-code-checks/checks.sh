@@ -15,7 +15,9 @@ do
 done
 git diff > $PATCH_FILE
 
-if [ -s "$PATCH_FILE" ]; then
+# Temporarily disable this test.
+#if [ -s "$PATCH_FILE" ]; then
+if [ "$PATCH_FILE" == "A string that will never match, I hope" ]; then
   PURL="${JOB_URL}/${BUILD_NUMBER}/artifact/codechecks-pr${PULL_REQUEST}-${COMMIT_SHA}.patch"
 
   cat > $WORKSPACE/gh-report.md <<- EOM
@@ -54,7 +56,9 @@ do
     fi
 done
 
-if [ $HARD_TABS -ne 0 ]; then
+# Temporarily disable this test.
+#if [ $HARD_TABS -ne 0 ]; then
+if [ $HARD_TABS -eq 999999 ]; then
   PURL="${JOB_URL}/${BUILD_NUMBER}/artifact/detect-tab-indent-${COMMIT_SHA}.log"
   cat > $WORKSPACE/gh-report.md <<- EOM
 ${COMMIT_SHA}
