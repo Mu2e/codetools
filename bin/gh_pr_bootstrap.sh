@@ -8,6 +8,8 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 export JENKINS_TESTS_DIR="$DIR/github/jenkins_tests"
 export CLANGTOOLS_UTIL_DIR="$DIR/../clangtools_utilities"
 export TESTSCRIPT_DIR="$JENKINS_TESTS_DIR/$1"
+export REQUIRED_BUILD_REPOS=("Mu2e/Offline" "Mu2e/Production")
+export REQUIRED_BUILD_REPOS_SHORT=("Offline" "Production")
 
 cd "$WORKSPACE" || exit 1;
 
@@ -129,22 +131,25 @@ function cmsbot_report_test_status() {
         --url "$4"
 }
 
-function setup_offline() {
-    # setup_offline Mu2e/Offline
-    # clone Mu2e/Offline
 
+function setup_build_repos() {
+    # setup_build_repos Mu2e/Offline if you are testing Offline
+    # setup_build_repos Mu2e/Production if you are testing Production
     export REPO=$(echo $1 | sed 's|^.*/||')
     export REPO_FULLNAME=$1
     (
-
-        rm -rf $REPO .sconsign.dblite build Production
-
-        git clone "https://github.com/$REPO_FULLNAME"
-        
-        if [ ! -d "Production" ]; then
-            git clone https://github.com/Mu2e/Production
+        # clean up any previous builds
+        rm -rf $REPO .sconsign.dblite build ${REQUIRED_BUILD_REPOS_SHORT[@]}
+        # clone all the required repos
+        for reqrepo in ${REQUIRED_BUILD_REPOS[@]};
+        do
+            git clone "https://github.com/${reqrepo}"
+        done
+        # make sure we got our PR repo
+        if [ ! -d "${REPO}" ]; then
+            git clone "https://github.com/$REPO_FULLNAME"
         fi
-        
+
         cd $REPO
 
         git config user.email "you@example.com"
@@ -152,6 +157,7 @@ function setup_offline() {
 
         git fetch origin pull/${PULL_REQUEST}/head:pr${PULL_REQUEST}
     )
+
 }
 
 

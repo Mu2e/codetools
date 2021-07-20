@@ -142,7 +142,7 @@ echo "[$(date)] setup Mu2e/CI"
 setup_cmsbot
 
 echo "[$(date)] setup ${REPOSITORY}"
-setup_offline "${REPOSITORY}"
+setup_build_repos "${REPOSITORY}"
 
 cd "$WORKSPACE/$REPO" || exit 1
 echo ${MASTER_COMMIT_SHA} > master-commit-sha.txt
