@@ -139,9 +139,9 @@ function setup_build_repos() {
     export REPO_FULLNAME=$1
     (
         # clean up any previous builds
-        rm -rf $REPO .sconsign.dblite build ${REQUIRED_BUILD_REPOS_SHORT[@]}
+        rm -rf $REPO .sconsign.dblite build "${REQUIRED_BUILD_REPOS_SHORT[@]}"
         # clone all the required repos
-        for reqrepo in ${REQUIRED_BUILD_REPOS[@]};
+        for reqrepo in "${REQUIRED_BUILD_REPOS[@]}";
         do
             git clone "https://github.com/${reqrepo}"
         done
