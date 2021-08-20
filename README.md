@@ -19,7 +19,7 @@ The simplest example is that you have a working directory that contains 2 direct
 and you already have a UPS **debug** version of root set up in the environment.  In that directory do
 the following:
 
-* git clone https://github.com/kutschke/KinKal_to_UPS.git
+* git clone https://github.com/Mu2e/KinKal_to_UPS.git
 * KinKal_to_UPS/build -h  # to see the help
 * KinKal_to_UPS/build -v <git_tag_name> -i
 
@@ -49,7 +49,7 @@ You can access the headers and libraries with the usual -I$KINKAL_INC and -L$KIN
 
 Start in a clean working directory with no UPS version of root or cmake already setup.
 
-* git clone https://github.com/kutschke/KinKal_to_UPS.git
+* git clone https://github.com/Mu2e/KinKal_to_UPS.git
 * setup mu2e
 * KinKal_to_UPS/build -v "v0.1.1" -n -b -t -i -z -c "v3_18_2" -r "v6_20_08a -q+e20:+p383b:+prof" -j 24   -d ${PWD}/artexternals
 
@@ -66,7 +66,7 @@ This will do the following
 When this is complete you will see the following subdirectories of clean_working_dir
 * KinKal_to_UPS - this package
 * KinKal        - the cloned source
-* build_prof    - the working space for the Release (prof) build
+* build_profile - the working space for the Release (prof) build
 * build_debug   - the working space for the Debug (debug) build
 * artexternals  - the UPS repo into which the code is installed.
 
@@ -78,7 +78,7 @@ These tar.bz2 files are formatted to be unwound into /cvmfs/mu2e.opensciencegrid
 
 You can point the UPS repo at an arbitrary directory using the -d option but the other four directory names are hard coded.
 
-The default behaviour is to abort if the KinKal directory already exists; it will overwrite existing files in build_prof, build_debug
+The default behaviour is to abort if the KinKal directory already exists; it will overwrite existing files in build_profile, build_debug
 and artexternals/KinKal.
 
 ## Fixmes, Todos and questions
@@ -91,7 +91,7 @@ and artexternals/KinKal.
 * Should KinKal_to_UPS be installed in UPS?
 * In the case of installing a prebuilt version of KinKal, is there a way to automatically determine the git tag so that it does not need to be given by hand in the install command?
 * Add an option to add additional qualifiers to the KinKal product
-* Is it OK that the names build_prof, build_debug are hard coded?  If not, we can make options to define them.
+* Is it OK that the names build_profile, build_debug are hard coded?  If not, we can make options to define them.
 * What additional checks for corner cases are needed?
 * I need to roll up the return statuses to one overall exit status and update the exit message.
 * Rename the tar.bz2 files to match the scisoft standard.
