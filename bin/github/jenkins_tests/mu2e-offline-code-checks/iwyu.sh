@@ -25,7 +25,7 @@ The code checks succeeded with messages (IWYU).
 ${JOB_URL}/${BUILD_NUMBER}/console
 :+1: Code checks succeeded with suggestions at ref ${COMMIT_SHA}.
 
-IWYU made suggestions for $(git diff --name-status master | grep "^M" | wc -l) files. These are not required, but recommended.
+IWYU made suggestions for $(git diff --name-status main | grep "^M" | wc -l) files. These are not required, but recommended.
 
 Please review and \`git apply\` [this patch]($PURL) on your PR branch:
 
