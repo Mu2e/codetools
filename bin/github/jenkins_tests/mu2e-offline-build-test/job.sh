@@ -149,7 +149,7 @@ echo ${MASTER_COMMIT_SHA} > master-commit-sha.txt
 
 git checkout ${COMMIT_SHA} || exit 1
 
-export MODIFIED_PR_FILES=$(git --no-pager diff --name-only FETCH_HEAD $(git merge-base FETCH_HEAD master))
+export MODIFIED_PR_FILES=$(git --no-pager diff --name-only FETCH_HEAD $(git merge-base FETCH_HEAD main))
 CT_FILES="" # files to run in clang tidy
 
 
