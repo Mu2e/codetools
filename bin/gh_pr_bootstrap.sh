@@ -92,11 +92,18 @@ function setup_cmsbot() {
     if [ ! -d ${CMS_BOT_DIR} ]; then
         (
             cd "$WORKSPACE"
-            git clone -b master git@github.com:Mu2e/CI
+            git clone git@github.com:Mu2e/CI
         )
     else
         (
             cd ${CMS_BOT_DIR}
+            # make sure we don't try to use the old "master" branch, in favor
+            # of "main"
+            if [[ "$(git rev-parse --abbrev-ref HEAD)" == *"master"* ]]; then
+                git fetch
+                git checkout main
+                git pull
+            fi
             git reset --hard HEAD
             git fetch; 
             git pull
