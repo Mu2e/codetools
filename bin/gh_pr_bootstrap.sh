@@ -138,6 +138,16 @@ function cmsbot_report_test_status() {
         --url "$4"
 }
 
+function cmsbot_write_pr_base() {
+    # args: $1 is repo, $2 is pr number, $3 is the sha file name
+    # example: cmsbot_write_pr_base Mu2e/Offline 581 repoOffline_pr581_baseSha.txt
+    if [ "${CMS_BOT_VENV_SOURCED}" -ne 1 ]; then
+        CMS_BOT_VENV_SOURCED=1
+        source $HOME/mu2e-gh-bot-venv/bin/activate
+    fi
+    ${CMS_BOT_DIR}/get-pr-base-sha -r $1 -p $2 -f $3
+}
+
 
 function setup_build_repos() {
     # setup_build_repos Mu2e/Offline if you are testing Offline
