@@ -21,7 +21,7 @@ function prepare_repositories() {
         git log -1
         append_report_row "checkout" ":white_check_mark:" "Checked out ${COMMIT_SHA}"
     else
-        echo "[$(date)] Mu2e/$REPO - Checking out latest commit on base branch"
+        echo "[$(date)] Mu2e/$REPO - Checking out latest commit on base branch, which is ${MASTER_COMMIT_SHA}"
         git checkout ${MASTER_COMMIT_SHA}
         git log -1
     fi
@@ -62,6 +62,21 @@ function prepare_repositories() {
             git config user.email "you@example.com"
             git config user.name "Your Name"
             git fetch origin pull/${THE_PR}/head:pr${THE_PR}
+
+            # get the base ref commit sha for the test-with PR, but ONLY if it's in a different repo than the "overall" PR we're testing.
+            if [ ${REPO_NAME} != ${REPO} ]; then
+                SHA_FILE_NAME="repo${REPO_NAME}_pr${THE_PR}_baseSha.txt"
+                cmsbot_write_pr_base Mu2e/$REPO_NAME $THE_PR $SHA_FILE_NAME || echo "Failed to retrieve base branch commit sha for repo ${REPO_NAME} PR ${THE_PR}"
+                if [ -f $SHA_FILE_NAME ]; then
+                    THE_BASE_SHA=$(cat $SHA_FILE_NAME)
+                    echo "Checking out commit ${THE_BASE_SHA} on repo ${REPO_NAME} before merging PR ${THE_PR}"
+                    git checkout ${THE_BASE_SHA} || echo "Failed to checkout commit ${THE_BASE_SHA}, default is to merge into main"
+                    git log -1
+                else
+                    echo "No base commit sha file written for ${REPO_NAME}#${THE_PR}, default base is main branch"
+                    append_report_row "test with" ":x:" "Failed to retrieve request base branch commit sha for Mu2e/${REPO_NAME}#${THE_PR}, default is to merge into main"
+                fi
+            fi
 
             echo "[$(date)] Merging PR ${REPO_NAME}#${THE_PR} into ${REPO_NAME} as part of this test."
 
