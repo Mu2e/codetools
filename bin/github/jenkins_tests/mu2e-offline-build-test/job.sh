@@ -65,9 +65,8 @@ function prepare_repositories() {
 
             # get the base ref commit sha for the test-with PR, but ONLY if it's in a different repo than the "overall" PR we're testing.
             if [ ${REPO_NAME} != ${REPO} ]; then
-                REPO_NAME_NOOWNER=$( echo $REPO_NAME | awk -F/ '{print $2}' )
-                SHA_FILE_NAME="repo${REPO_NAME_NOOWNER}_pr${THE_PR}_baseSha.txt"
-                cmsbot_write_pr_base $REPO_NAME $THE_PR $SHA_FILE_NAME || echo "Failed to retrieve base branch commit sha for repo ${REPO_NAME} PR ${THE_PR}"
+                SHA_FILE_NAME="repo${REPO_NAME}_pr${THE_PR}_baseSha.txt"
+                cmsbot_write_pr_base Mu2e/$REPO_NAME $THE_PR $SHA_FILE_NAME || echo "Failed to retrieve base branch commit sha for repo ${REPO_NAME} PR ${THE_PR}"
                 if [ -f $SHA_FILE_NAME ]; then
                     THE_BASE_SHA=$(cat $SHA_FILE_NAME)
                     echo "Checking out commit ${THE_BASE_SHA} on repo ${REPO_NAME} before merging PR ${THE_PR}"
