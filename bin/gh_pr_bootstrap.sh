@@ -143,18 +143,22 @@ function cmsbot_report_test_status() {
 
 function cmsbot_write_pr_base() {
     # args: $1 is repo, $2 is pr number, $3 is the sha file name
-    #       $4 is optional; if provided, it determines whether to write the
+    #       $4 is optional; if provided, it the function writes the
     #       base branch name instead of the commit sha. If not provided, 
-    #       defaults to writing the commit sha.
-    # example: cmsbot_write_pr_base Mu2e/Offline 581 repoOffline_pr581_baseSha.txt
-    # example: cmsbot_write_pr_base Mu2e/Offline 581 repoOffline_pr581_baseName.txt True
-    # That "True" is just a string to bash, but gets passed to Python, which expects a boolean
+    #       it defaults to writing the commit sha.
+    # example: cmsbot_write_pr_base Mu2e/Offline 581 repoOffline_pr581_baseSha.txt (writes sha)
+    # example: cmsbot_write_pr_base Mu2e/Offline 581 repoOffline_pr581_baseName.txt True (writes branch name)
+    # (That "True" is just a string to bash, but gets passed to Python, which expects a boolean)
     if [ "${CMS_BOT_VENV_SOURCED}" -ne 1 ]; then
         CMS_BOT_VENV_SOURCED=1
         source $HOME/mu2e-gh-bot-venv/bin/activate
     fi
-    justName=${4:-False}
-    ${CMS_BOT_DIR}/get-pr-base-sha -r $1 -p $2 -f $3 -j $justName
+    just_name=${4:-NOARG} # just the string "NOARG"
+    if [ $just_name == NOARG ]; then
+        ${CMS_BOT_DIR}/get-pr-base-sha -r $1 -p $2 -f $3
+    else
+        ${CMS_BOT_DIR}/get-pr-base-sha -r $1 -p $2 -f $3 -j $just_name
+    fi
 }
 
 
@@ -165,10 +169,10 @@ function setup_build_repos() {
     export REPO_FULLNAME=$1
     base_branch=main
     # get the name of the branch this PR is requesting to merge into
-    branchFileName="repo${REPO}_pr${PULL_REQUEST}_baseBranch.txt"
-    cmsbot_write_pr_base $REPO_FULLNAME $PULL_REQUEST $branchFileName True || echo "Failed to retrieve base branch name for repo ${REPO_FULLNAME} PR ${PULL_REQUEST}"
-    if [ -f $branchFileName ]; then
-        base_branch=$(cat $branchFileName)
+    branch_filename="repo${REPO}_pr${PULL_REQUEST}_baseBranch.txt"
+    cmsbot_write_pr_base $REPO_FULLNAME $PULL_REQUEST $branch_filename True || echo "Failed to retrieve base branch name for repo ${REPO_FULLNAME} PR ${PULL_REQUEST}"
+    if [ -f $branch_filename ]; then
+        base_branch=$(cat $branch_filename)
     fi
     (
         # clean up any previous builds
