@@ -8,8 +8,11 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 export JENKINS_TESTS_DIR="$DIR/github/jenkins_tests"
 export CLANGTOOLS_UTIL_DIR="$DIR/../clangtools_utilities"
 export TESTSCRIPT_DIR="$JENKINS_TESTS_DIR/$1"
-export REQUIRED_BUILD_REPOS=("Mu2e/Offline" "Mu2e/Production")
 export REQUIRED_BUILD_REPOS_SHORT=("Offline" "Production")
+
+# if the PR is trying to merge into this branch, make sure all other repos
+# in the build are set up in this branch by default
+BRANCHNAMES_MUST_MATCH="Mu2eII_SM21"
 
 cd "$WORKSPACE" || exit 1;
 
@@ -140,12 +143,22 @@ function cmsbot_report_test_status() {
 
 function cmsbot_write_pr_base() {
     # args: $1 is repo, $2 is pr number, $3 is the sha file name
-    # example: cmsbot_write_pr_base Mu2e/Offline 581 repoOffline_pr581_baseSha.txt
+    #       $4 is optional; if provided, it the function writes the
+    #       base branch name instead of the commit sha. If not provided, 
+    #       it defaults to writing the commit sha.
+    # example: cmsbot_write_pr_base Mu2e/Offline 581 repoOffline_pr581_baseSha.txt (writes sha)
+    # example: cmsbot_write_pr_base Mu2e/Offline 581 repoOffline_pr581_baseName.txt True (writes branch name)
+    # (That "True" is just a string to bash, but gets passed to Python, which expects a boolean)
     if [ "${CMS_BOT_VENV_SOURCED}" -ne 1 ]; then
         CMS_BOT_VENV_SOURCED=1
         source $HOME/mu2e-gh-bot-venv/bin/activate
     fi
-    ${CMS_BOT_DIR}/get-pr-base-sha -r $1 -p $2 -f $3
+    just_name=${4:-NOARG} # just the string "NOARG"
+    if [ $just_name == NOARG ]; then
+        ${CMS_BOT_DIR}/get-pr-base-sha -r $1 -p $2 -f $3
+    else
+        ${CMS_BOT_DIR}/get-pr-base-sha -r $1 -p $2 -f $3 -j $just_name
+    fi
 }
 
 
@@ -154,13 +167,27 @@ function setup_build_repos() {
     # setup_build_repos Mu2e/Production if you are testing Production
     export REPO=$(echo $1 | sed 's|^.*/||')
     export REPO_FULLNAME=$1
+    base_branch=main
+    # get the name of the branch this PR is requesting to merge into
+    branch_filename="repo${REPO}_pr${PULL_REQUEST}_baseBranch.txt"
+    cmsbot_write_pr_base $REPO_FULLNAME $PULL_REQUEST $branch_filename True || echo "Failed to retrieve base branch name for repo ${REPO_FULLNAME} PR ${PULL_REQUEST}"
+    if [ -f $branch_filename ]; then
+        base_branch=$(cat $branch_filename)
+    fi
     (
         # clean up any previous builds
         rm -rf $REPO .sconsign.dblite build "${REQUIRED_BUILD_REPOS_SHORT[@]}"
         # clone all the required repos
-        for reqrepo in "${REQUIRED_BUILD_REPOS[@]}";
+        for reqrepo in "${REQUIRED_BUILD_REPOS_SHORT[@]}";
         do
-            git clone "https://github.com/${reqrepo}"
+            git clone "https://github.com/Mu2e/${reqrepo}"
+            if [ ${base_branch} == ${BRANCHNAMES_MUST_MATCH} ]; then
+                (
+                    cd $reqrepo
+                    git fetch origin ${base_branch} || echo "Failed to fetch branch ${base_branch} of repo Mu2e/${reqrepo}"
+                    git checkout ${base_branch}  || echo "Failed to checkout branch ${base_branch} of repo Mu2e/${reqrepo}"
+                )
+            fi
         done
         # make sure we got our PR repo
         if [ ! -d "${REPO}" ]; then
