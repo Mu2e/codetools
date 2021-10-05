@@ -8,17 +8,19 @@
 # Arguments
 # cmakever             = version + qualifer string for cmake
 # root_for_this_build  = version + qualifier string for root
+# local_build_dir      = directory that will hold the build
 # nbuildthreads        = number of threads to use for make
 # dotest               = if true then do the tests after the build
 
 cmake_ver=$1
 root_for_this_build=$2
-nbuildthreads=$3
-dotest=$4
+local_build_dir=$3
+nbuildthreads=$4
+dotest=$5
 
 # The convention suggested in the KinKal docs is that
-#  cmake build type Release is built in the directory build_profile
-#  cmake build type Debug is built in the directory build_debug
+#  cmake build type Release is built in the directory kinkal_profile
+#  cmake build type Debug is built in the directory kinkal_debug
 cmake_build_type=""
 local_build_suffix=""
 if grep -q "prof"  <<< "$root_for_this_build"; then
@@ -46,8 +48,8 @@ if [[ "$?" != "0" ]]; then
 fi
 ups active
 
-mkdir -p build_${local_build_suffix}
-cd build_${local_build_suffix}
+mkdir -p ${local_build_dir}
+cd ${local_build_dir}
 cmake ../KinKal  -DCMAKE_BUILD_TYPE=${cmake_build_type}
 if [[ "$?" != "0" ]]; then
   exit 4

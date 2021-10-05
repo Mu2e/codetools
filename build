@@ -203,8 +203,8 @@ makeTarFiles() {
 
 productName=KinKal
 
-buildDirProf="build_profile"
-buildDirDebug="build_debug"
+buildDirProf="kinkal_profile"
+buildDirDebug="kinkal_debug"
 
 # The directory that contains this script (and others that it will run).
 thisDir=`dirname $(readlink -f $0)`
@@ -319,13 +319,13 @@ if [ -n "$doBuild" ]; then
     exit 3
   fi
   if [[ -n "${doProf}" ]]; then
-    ${thisDir}/build_one_version ${cmakever} "${rootVer} -q${plusProfRootQuals}" ${nBuildThreads} ${doTest}
+    ${thisDir}/build_one_version ${cmakever} "${rootVer} -q${plusProfRootQuals}" ${buildDirProf} ${nBuildThreads} ${doTest}
     if [[ "$?" != "0" ]]; then
        exit 4
     fi
   fi
   if [[ -n "${doDebug}" ]]; then
-    ${thisDir}/build_one_version ${cmakever} "${rootVer} -q${plusDebugRootQuals}" ${nBuildThreads} ${doTest}
+    ${thisDir}/build_one_version ${cmakever} "${rootVer} -q${plusDebugRootQuals}" ${buildDirDebug} ${nBuildThreads} ${doTest}
     if [[ "$?" != "0" ]]; then
        exit 5
     fi
