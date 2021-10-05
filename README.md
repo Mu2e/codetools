@@ -66,8 +66,8 @@ This will do the following
 When this is complete you will see the following subdirectories of clean_working_dir
 * KinKal_to_UPS - this package
 * KinKal        - the cloned source
-* build_profile - the working space for the Release (prof) build
-* build_debug   - the working space for the Debug (debug) build
+* kinkal_profile - the working space for the Release (prof) build
+* kinkal_debug   - the working space for the Debug (debug) build
 * artexternals  - the UPS repo into which the code is installed.
 
 You will also see two files:
@@ -78,7 +78,7 @@ These tar.bz2 files are formatted to be unwound into /cvmfs/mu2e.opensciencegrid
 
 You can point the UPS repo at an arbitrary directory using the -d option but the other four directory names are hard coded.
 
-The default behaviour is to abort if the KinKal directory already exists; it will overwrite existing files in build_profile, build_debug
+The default behaviour is to abort if the KinKal directory already exists; it will overwrite existing files in kinkal_profile, kinkal_debug
 and artexternals/KinKal.
 
 ## Fixmes, Todos and questions
@@ -91,7 +91,7 @@ and artexternals/KinKal.
 * Should KinKal_to_UPS be installed in UPS?
 * In the case of installing a prebuilt version of KinKal, is there a way to automatically determine the git tag so that it does not need to be given by hand in the install command?
 * Add an option to add additional qualifiers to the KinKal product
-* Is it OK that the names build_profile, build_debug are hard coded?  If not, we can make options to define them.
+* Is it OK that the names kinkal_profile, kinkal_debug are hard coded?  If not, we can make options to define them.
 * What additional checks for corner cases are needed?
 * I need to roll up the return statuses to one overall exit status and update the exit message.
 * Rename the tar.bz2 files to match the scisoft standard.
