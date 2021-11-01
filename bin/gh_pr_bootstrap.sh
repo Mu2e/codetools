@@ -9,6 +9,7 @@ export JENKINS_TESTS_DIR="$DIR/github/jenkins_tests"
 export CLANGTOOLS_UTIL_DIR="$DIR/../clangtools_utilities"
 export TESTSCRIPT_DIR="$JENKINS_TESTS_DIR/$1"
 export REQUIRED_BUILD_REPOS_SHORT=("Offline" "Production")
+export GH_COMMON_SCRIPT="$DIR/github/github_common.sh"
 
 # if the PR is trying to merge into this branch, make sure all other repos
 # in the build are set up in this branch by default
@@ -211,6 +212,7 @@ echo "Running job now."
 print_jobinfo
 
 (
+    source $GH_COMMON_SCRIPT
     source $JOB_SCRIPT
 )
 JOB_STATUS=$?
