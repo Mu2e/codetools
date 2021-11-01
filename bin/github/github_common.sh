@@ -126,22 +126,22 @@ function prepare_repositories() {
 
 function report_merge_error() {
     cat > gh-report.md <<- EOM
-    ${COMMIT_SHA}
-    $1
-    error
-    The PR branch may have conflicts.
-    http://github.com/${REPOSITORY}/pull/${PULL_REQUEST}
-    :bangbang: It was not possible to prepare the workspace for this test. This is often caused by merge conflicts - please check and try again.
-    \`\`\`
-    > git diff --check | grep -i conflict
-    $(git diff --check | grep -i conflict)
-    \`\`\`
+${COMMIT_SHA}
+$1
+error
+The PR branch may have conflicts.
+http://github.com/${REPOSITORY}/pull/${PULL_REQUEST}
+:bangbang: It was not possible to prepare the workspace for this test. This is often caused by merge conflicts - please check and try again.
+\`\`\`
+> git diff --check | grep -i conflict
+$(git diff --check | grep -i conflict)
+\`\`\`
 
-    | Test          | Result        | Details |
-    | ------------- |:-------------:| ------- |${MU2E_POSTTEST_STATUSES}
+| Test          | Result        | Details |
+| ------------- |:-------------:| ------- |${MU2E_POSTTEST_STATUSES}
 
 
-    EOM
+EOM
         cmsbot_report gh-report.md
 }
 
