@@ -101,24 +101,7 @@ OFFLINE_MERGESTATUS=$?
 
 if [ $OFFLINE_MERGESTATUS -ne 0 ];
 then
-    cat > gh-report.md <<- EOM
-${COMMIT_SHA}
-mu2e/buildtest
-error
-The PR branch may have conflicts.
-http://github.com/${REPOSITORY}/pull/${PULL_REQUEST}
-:bangbang: It was not possible to prepare the workspace for this test. This is often caused by merge conflicts - please check and try again.
-\`\`\`
-> git diff --check | grep -i conflict
-$(git diff --check | grep -i conflict)
-\`\`\`
-
-| Test          | Result        | Details |
-| ------------- |:-------------:| ------- |${MU2E_POSTTEST_STATUSES}
-
-
-EOM
-    cmsbot_report gh-report.md
+    report_merge_error "mu2e/buildtest"
     exit 1;
 fi
 

@@ -124,6 +124,27 @@ function prepare_repositories() {
     return 0
 }
 
+function report_merge_error() {
+    cat > gh-report.md <<- EOM
+    ${COMMIT_SHA}
+    $1
+    error
+    The PR branch may have conflicts.
+    http://github.com/${REPOSITORY}/pull/${PULL_REQUEST}
+    :bangbang: It was not possible to prepare the workspace for this test. This is often caused by merge conflicts - please check and try again.
+    \`\`\`
+    > git diff --check | grep -i conflict
+    $(git diff --check | grep -i conflict)
+    \`\`\`
+
+    | Test          | Result        | Details |
+    | ------------- |:-------------:| ------- |${MU2E_POSTTEST_STATUSES}
+
+
+    EOM
+        cmsbot_report gh-report.md
+}
+
 # builds a report of a single test's status, to be posted on GitHub
 function build_test_report() {
     i=$1
