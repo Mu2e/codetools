@@ -1,6 +1,8 @@
 #! /bin/bash 
 #
 # produce a dot file with Proditions dependence
+# just grep the code for known dependences points, 
+# which may be fragile
 #
 #
 # run with an Offline directory as the argument
