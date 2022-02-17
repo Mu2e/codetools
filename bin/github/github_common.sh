@@ -178,3 +178,31 @@ function build_test_report() {
     fi
     append_report_row "$i" "${STATUS_temp}" "[Log file.](${JOB_URL}/${BUILD_NUMBER}/artifact/$i.log) ${EXTRAINFO}"
 }
+
+# assembles a string containing all the directories that need to be included in a build archive
+function collect_archive_list() {
+    # argument is the repo this build test was for
+    thisrepo=$1
+    # build dir
+    ARCHIVE_LIST="build $thisrepo"
+    # all required build repos
+    for reqrepo in "${REQUIRED_BUILD_REPOS_SHORT[@]}"; do
+        if [[ $ARCHIVE_LIST != *$reqrepo* ]]; then
+            ARCHIVE_LIST+=" $reqrepo"
+        fi
+    done
+    # any "test with PR" repos that have not already been included
+    if [ "${TEST_WITH_PR}" != "" ]; then
+        # comma separated list
+        for pr in $(echo ${TEST_WITH_PR} | sed "s/,/ /g")
+        do
+            # if it starts with "#" then it is a PR in the repo the build test was for and it's already included
+            if [[ $pr != \#* && $pr = *\#* ]]; then
+                REPO_NAME=$( echo $pr | awk -F\# '{print $1}' | sed 's|^.*/||' )
+                if [[ $ARCHIVE_LIST != *$REPO_NAME* ]]; then
+                    ARCHIVE_LIST+=" $REPO_NAME"
+                fi
+            fi
+        done
+    fi
+}
