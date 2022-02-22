@@ -107,6 +107,9 @@ Common:
 
     envSet (KINKAL_INC, \${KINKAL_DIR}/include )
     pathPrepend(ROOT_INCLUDE_PATH, \${KINKAL_DIR}/include)
+    pathPrepend(ROOT_INCLUDE_PATH, \${KINKAL_DIR}/include/KinKal/General)
+    pathPrepend(ROOT_INCLUDE_PATH, \${KINKAL_DIR}/include/KinKal/Trajectory)
+    pathPrepend(ROOT_INCLUDE_PATH, \${KINKAL_DIR}/include/KinKal/Examples)
 
     exeActionRequired(GetFQDir)
     envSet (KINKAL_LIB, \${KINKAL_DIR}/\${KINKAL_FQ}/lib )
