@@ -8,23 +8,68 @@ echo_date() {
 echo "[$(date)] $*" 
 }
 
-define_surfaceCheck() {
-    LABEL[$NPROJ]=surfaceCheck
+
+define_pileup() {
+    LABEL[$NPROJ]=pileup
     TARBALL[$NPROJ]=$TBALL
-    FCL[$NPROJ]=Offline/Mu2eG4/fcl/surfaceCheck.fcl
+    FCL[$NPROJ]=valJobFcl
     INPUT[$NPROJ]=NULL
     NINPUT[$NPROJ]=0
-    NEV[$NPROJ]=1
-    NJOB[$NPROJ]=1
-    MEM[$NPROJ]=1900MB
+    NEV[$NPROJ]=0
+    NJOB[$NPROJ]=20
+    MEM[$NPROJ]=2.5GB
     JOBID[$NPROJ]=none
     JID[$NPROJ]=0
     SEEDS[$NPROJ]=no
     WATCHDOG[$NPROJ]=no
     DATABASE[$NPROJ]=no
-    CHECK[$NPROJ]=overLaps
+    CHECK[$NPROJ]=statPlots
     STATUS[$NPROJ]="defined"
     CSTATUS[$NPROJ]="undefined"
+    PLOTS[$I]="undefined"
+    NPROJ=$(($NPROJ+1))
+    return 0
+}
+
+define_ceMix() {
+    LABEL[$NPROJ]=ceMix
+    TARBALL[$NPROJ]=$TBALL
+    FCL[$NPROJ]=valJobFcl
+    INPUT[$NPROJ]=NULL
+    NINPUT[$NPROJ]=0
+    NEV[$NPROJ]=500
+    NJOB[$NPROJ]=20
+    MEM[$NPROJ]=2GB
+    JOBID[$NPROJ]=none
+    JID[$NPROJ]=0
+    SEEDS[$NPROJ]=no
+    WATCHDOG[$NPROJ]=yes
+    DATABASE[$NPROJ]=no
+    CHECK[$NPROJ]=statPlots
+    STATUS[$NPROJ]="defined"
+    CSTATUS[$NPROJ]="undefined"
+    PLOTS[$I]="undefined"
+    NPROJ=$(($NPROJ+1))
+    return 0
+}
+
+define_stops() {
+    LABEL[$NPROJ]=stops
+    TARBALL[$NPROJ]=$TBALL
+    FCL[$NPROJ]=Production/JobConfig/validation/stoppedMuonsSingleStage.fcl
+    INPUT[$NPROJ]=NULL
+    NINPUT[$NPROJ]=0
+    NEV[$NPROJ]=50000
+    NJOB[$NPROJ]=20
+    MEM[$NPROJ]=3000MB
+    JOBID[$NPROJ]=none
+    JID[$NPROJ]=0
+    SEEDS[$NPROJ]=yes
+    WATCHDOG[$NPROJ]=no
+    DATABASE[$NPROJ]=no
+    CHECK[$NPROJ]=statPlots
+    CSTATUS[$NPROJ]="undefined"
+    STATUS[$NPROJ]="defined"
     PLOTS[$I]="undefined"
     NPROJ=$(($NPROJ+1))
     return 0
@@ -81,7 +126,7 @@ define_cosmicSimReco() {
     FCL[$NPROJ]=Production/Validation/cosmicSimReco.fcl
     INPUT[$NPROJ]=NULL
     NINPUT[$NPROJ]=0
-    NEV[$NPROJ]=50000
+    NEV[$NPROJ]=8000
     NJOB[$NPROJ]=20
     MEM[$NPROJ]=4GB
     JOBID[$NPROJ]=none
@@ -104,13 +149,14 @@ define_reco() {
     INPUT[$NPROJ]=recoInputFiles.txt
     NINPUT[$NPROJ]=1
     NEV[$NPROJ]=999999
-    NJOB[$NPROJ]=40
+#    NEV[$NPROJ]=200
+    NJOB[$NPROJ]=10
     MEM[$NPROJ]=1980MB
     JOBID[$NPROJ]=none
     JID[$NPROJ]=0
     SEEDS[$NPROJ]=no
     WATCHDOG[$NPROJ]=yes
-    DATABASE[$NPROJ]=no
+    DATABASE[$NPROJ]=yes
     CHECK[$NPROJ]=statPlots
     STATUS[$NPROJ]="defined"
     CSTATUS[$NPROJ]="undefined"
@@ -131,14 +177,15 @@ build_code() {
     fi
     DD=$(dirname $BUILD_DIR)
     if [ -z "$DEBUG" ]; then
-	rm -rf $DD/05
-	mv $DD/04 $DD/05
-	mv $DD/03 $DD/04
+	rm -rf $DD/03
 	mv $DD/02 $DD/03
 	mv $DD/01 $DD/02
 	mv $DD/current $DD/01
     fi
     mkdir -p $BUILD_DIR
+
+    # sleep a little bit in case the propagation of the mkdir is delayed
+    sleep 10
 
     ssh -n mu2ebuild01 "$HOME/cron/val/valJobBuild.sh $BUILD_DIR $TBALL >& $BUILD_DIR/buildlog"
     RC=$? # this includes the tar command
@@ -151,6 +198,7 @@ build_code() {
       echo "OK build" >> $REPORT
     fi
     grep REPORT $BUILD_DIR/buildlog | sed 's/REPORT //' >> $WEBREPORT
+
     return $RC
 }
 
@@ -283,9 +331,12 @@ recover_jobs() {
     local TT=$( printf "%02d" $J )
     local TS=$( ls -1 $DD/val | grep $TT  ) 
     #BUG local SS=$( ls -1l $DD/val | grep $TT  | awk '{print $5}' ) 
-    local SS=$( ls -1l $DD/val/$TS  | awk '{print $5}' ) 
+    local SS=""
+    if [ -n "$TS" ]; then
+	SS=$( ls -1l $DD/val/$TS  | awk '{print $5}' ) 
+    fi
     [ -z "$SS" ] && SS=0
-    echo_date "    loop $J TT=$TT   TS=$TS  SS=$SS"
+    #echo_date "    loop $J TT=$TT   TS=$TS  SS=$SS"
     if [[ -z "$TS" || $SS -lt 1000 ]]; then
       echo_date "recovery job ${LABEL[$I]} $TT"
 
@@ -324,7 +375,12 @@ recover_jobs() {
       echo "export VALJOB_RSDIR=$RSDIR " >> $CMDF
       echo "cd $BUILD_DIR " >> $CMDF
       echo "/mu2e/app/home/mu2epro/cron/val/valJobNode.sh >& $RDIR/log" >> $CMDF
-      ssh -n -f mu2ebuild01 "$CMDF"
+
+      # run recover on a ranndom node
+      local RNODEN=$((1 + $RANDOM % 6))
+      local RNODE=$(printf "mu2egpvm%02d" $RNODEN)
+
+      ssh -n -f $RNODE "$CMDF"
     fi
 
     J=$(($J+1))
@@ -514,7 +570,7 @@ valcompare() {
           [ ! -f $OVAL ] && OVAL=""
         done
 	if [ $DAYS -ge 20 ]; then
-	  echo_date "valcompare did not find compariosn after checking $DAYS days"
+	  echo_date "valcompare did not find comparison after checking $DAYS days"
 	  echo "FAIL ${LABEL[$I]} did not find comparison" >> $REPORT
 	  echo "GRIDS FAIL ${LABEL[$I]}" >> $WEBREPORT
 	else
@@ -534,11 +590,12 @@ valcompare() {
           rm -f $TMP
           CSTATUS[$I]=$NBAD
           if [ $NBAD -eq 0 ]; then
-            echo "OK ${LABEL[$I]} plots matched from $DAYS day(s) ago" >> $REPORT
 	    if [ $NSOSO -eq 0 ]; then
 		echo "GRIDS PERFECT ${LABEL[$I]}" >> $WEBREPORT
+		echo "PERFECT ${LABEL[$I]} plots matched from $DAYS day(s) ago" >> $REPORT
 	    else
 		echo "GRIDS OK ${LABEL[$I]}" >> $WEBREPORT
+		echo "OK  ${LABEL[$I]} plots matched from $DAYS day(s) ago" >> $REPORT
 	    fi
           else
             echo "FAIL ${LABEL[$I]} $NBAD plots failed match from $DAYS day(s) ago" >> $REPORT
@@ -555,6 +612,31 @@ valcompare() {
 	fi # comparison found
       fi # COMPLETE
     fi # statPlot
+
+    # if this is the stops job, try to find and print the stops rate
+    if [ "${LABEL[$I]}" == "stops" ]; then
+	local STOPSRATE=0
+	local STOPSFN=$OUTDIR/summary/${LABEL[$I]}.root
+	if [ -f $STOPSFN ]; then
+	    local TMP=$(mktemp)
+	    root.exe -l -q -b stops.C'("'$STOPSFN'")' >& $TMP
+	    RC=$?
+	    if [ $RC -eq 0 ]; then
+		local DEN=$(( ${NJOB[$I]} * ${NEV[$I]} ))
+		local NUM=$(cat $TMP | awk '{if($1=="STOPSCOUNT") print $2}' )
+		STOPSRATE=$((${NUM}*1000000/${DEN}))
+		echo "STOPS NUM $NUM DEN $DEN RATE $STOPSRATE"
+	    else
+		echo "ERROR - stops count extraction failed, log follows"
+		cat $TMP
+	    fi
+	    rm -f $TMP
+	fi # if stops file exists
+
+        echo "  Stops rate $STOPSRATE E-6" >> $REPORT
+	echo "STOPSRATE $STOPSRATE" >> $WEBREPORT
+	
+    fi # if stops job
 
     I=$(($I+1))
   done
@@ -678,6 +760,7 @@ nightlyweb() {
   return 0
 }
 
+
 #
 #
 #
@@ -713,7 +796,7 @@ exit_proc() {
   [ -n "`grep MISSING $REPORT`" ] && COMPLETE="INCOMPLETE"
   local RESULT="SUCCESS"
   [ -n "`grep FAIL $REPORT`" ] && RESULT=FAIL
-  cat $REPORT | mail -r valJob -s "valJob $COMPLETE and $RESULT" \
+  cat $REPORT | mail -r valJob -s "valJob $(date +%m/%d/%y ) $COMPLETE and $RESULT" \
 rlc@fnal.gov,genser@fnal.gov,kutschke@fnal.gov,dave_brown@lbl.gov,david.brown@louisville.edu,gandr@fnal.gov,murat@fnal.gov,gianipez@fnal.gov,echenard@fnal.gov,ehrlich@virginia.edu,macndev@fnal.gov,hcasler@fnal.gov
 #    rlc@fnal.gov
   exit $RC
@@ -748,6 +831,8 @@ rm -f $REPORT
 # this will contain the web report
 WEBREPORT=valJobWeb.txt
 rm -f $WEBREPORT
+# this will contain the DQM entries
+DQMREPORT=valJobDqm.txt
 # all output will be written here
 BASE_DIR=/pnfs/mu2e/persistent/users/mu2epro/valjob
 # the val comparison
@@ -770,6 +855,8 @@ else
     # the val comparison
     WEB_DIR_DAY=$WEB_DIR/$(date +%Y_%m/%d)
 fi
+
+klist
 
 # the collected plots
 mkdir -p $OUTDIR/summary
@@ -794,6 +881,11 @@ if [ $RC -ne 0 ]; then
   fi
 fi
 
+# kick off secondary validation checks
+# this script runs completely independently
+echo_date "launch secondary"
+ssh -n -f mu2ebuild01 "$HOME/cron/val/valJobSecondary.sh >& $HOME/cron/val/valJobSecondary.log"
+
 # run quick tests
 check_code
 # don't stop on failure..
@@ -805,12 +897,13 @@ define_ceSimReco
 define_reco
 define_cosmicSimReco
 define_potSim
-#define_surfaceCheck
+define_stops
+define_ceMix
+define_pileup
 
 echo_date "$NPROJ projects defined: ${LABEL[*]}"
 
 # submit
-klist
 voms-proxy-info
 submit_jobs
 
@@ -823,7 +916,7 @@ RC=$?
 # will need root to do concatenation
 
 # need to access hadd and valCompare
-muse setup Offline
+muse setup $BUILD_DIR
 
 collect_summaries
 RC=$?
@@ -835,6 +928,9 @@ valcompare
 RC=$?
 nightlyweb
 RC=$?
+
+echo_date "starting DQM"
+ssh -n -f mu2egpvm01 "$HOME/cron/val/valJobDqm.sh >& $HOME/cron/val/valJobDqm.log"
 
 # send summary
 exit_proc 0 success

@@ -31,18 +31,15 @@ setup codetools
 muse setup -1
 
 echo_date "start root overlaps"
-rootOverlaps.sh
-RCT=${PIPESTATUS[0]}
+overlapCheck.sh
+RCT=$?
 echo_date "root overlaps return code $RCT"
-LEGAL=$( grep CloseGeometry check | awk '{print $4 " " $5 " " $6 " " $7 " " $8}' )
-ILLEGAL=$( grep illegal check | awk '{print $NF}' )
-if [[ $RCT -eq 0 && $ILLEGAL -eq 0 ]]; then
+if [ $RCT -eq 0 ]; then
   STATUS=OK
 else
   STATUS=FAILED
-  RCT=1
 fi
-echo "REPORT STATUS $STATUS root overlaps   $ILLEGAL overlaps in $LEGAL"
+echo "REPORT STATUS $STATUS root overlaps"
 RC=$(($RC+$RCT))
 
 
