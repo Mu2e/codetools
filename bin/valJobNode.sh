@@ -150,19 +150,54 @@ initialize() {
 exe() {
   tee_date "start exe"
   TIME=`date +%s`
+
+  ####################################################
+  if [ "$VALJOB_FCL" == "valJobFcl" ]; then
+      FCLFN=$MUSE_WORK_DIR/valJobFcl/${LABEL}.fcl
+      tee_date fcl file is $FCLFN
+
+      /cvmfs/mu2e.opensciencegrid.org/bin/SLF7/mu2e_time \
+	  mu2e -c $FCLFN
+      RC=$?
+      tee_date "exe $RC"
+  
+      DT=$((`date +%s`-$TIME))
+      tee_date "time exe $DT"
+
+      if [ $RC -ne 0 ]; then
+	  tee_date "ERROR exit exe $RC"
+	  return $RC
+      fi
+
+      return 0
+
+
+  fi ###########################
+
+
   tee_date cp $MUSE_WORK_DIR/$VALJOB_FCL ./local.fcl
   cp $MUSE_WORK_DIR/$VALJOB_FCL ./local.fcl
-  
+
   if [ "$VALJOB_SEEDS" != "no" ]; then
     export VALJOB_SEED=`cat seeds.txt | awk -v n=$PROCESS '{if(NR==(n+1)) print $1}'`
     echo "services.SeedService.baseSeed: $VALJOB_SEED" >> local.fcl
+    tee_date Using seed $VALJOB_SEED
   fi
 
   if [ "$VALJOB_DATABASE" == "yes" ]; then
-    echo "services.DbService.purpose: TRK_TEST" >> local.fcl
-    echo "services.DbService.version: 2" >> local.fcl
-    echo "services.DbService.verbose: 5" >> local.fcl
+    echo "services.DbService.purpose : NOMINAL" >> local.fcl
+    echo "services.DbService.version : v1_0" >> local.fcl
+    echo "services.DbService.dbName : "mu2e_conditions_prd"" >> local.fcl
+    echo "services.DbService.verbose : 5" >> local.fcl
+    echo "services.ProditionsService.alignedTracker.useDb: true" >> local.fcl
+    echo "services.ProditionsService.alignedTracker.verbose: 0" >> local.fcl
     echo "services.ProditionsService.strawElectronics.useDb: true" >> local.fcl
+    echo "services.ProditionsService.strawElectronics.verbose: 0" >> local.fcl
+
+#    echo "services.DbService.purpose: TRK_TEST" >> local.fcl
+#    echo "services.DbService.version: 2" >> local.fcl
+#    echo "services.DbService.verbose: 5" >> local.fcl
+#    echo "services.ProditionsService.strawElectronics.useDb: true" >> local.fcl
   fi
 
 
@@ -228,7 +263,7 @@ validation() {
       IFILE="xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/$IFILE"
   fi
 
-  /cvmfs/mu2e.opensciencegrid.org/bin/SLF6/mu2e_time \
+  /cvmfs/mu2e.opensciencegrid.org/bin/SLF7/mu2e_time \
     mu2e -s $IFILE -c Offline/Validation/fcl/val.fcl -T val_${LABEL}.root
   RC=$?
   tee_date "val $RC"
@@ -295,7 +330,8 @@ output_art() {
   ls -l
 
   OUTDIR=${VALJOB_OUTDIR}/art
-  transfer  ${LABEL}.art ${LABEL}.root
+  #transfer  ${LABEL}.art ${LABEL}.root
+  transfer  ${LABEL}.art
   RC=$?
 
   DT=$((`date +%s`-$TIME))

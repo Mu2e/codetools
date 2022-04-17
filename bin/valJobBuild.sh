@@ -53,13 +53,22 @@ if [ $RC -ne 0 ]; then
   exit $RC
 fi
 
-echo_date "print commit"
+echo_date "print Offline commit"
 git -C Offline show -q
 git -C Offline rev-parse HEAD
+
+echo_date "print Production commit"
+git -C Production show -q
+git -C Production rev-parse HEAD
 
 echo_date "muse setup"
 muse setup -1
 muse status
+
+
+# change the name of test directories, so nothing can use them
+echo_date "move test directories"
+find * -mindepth 2 -type d -name "test" | while read DD; do mv $DD ${DD}x; done
 
 echo_date "start build"
 T0=$(date +%s)
@@ -75,14 +84,18 @@ if [ $RC -ne 0 ]; then
   exit $RC
 fi
 
+echo_date "starting gdml"
+muse build GDML
+RC=$?
+echo_date "build GDML return code $RC"
+
 echo_date "starting tarball"
 T0=$(date +%s)
 cp /mu2e/app/home/mu2epro/cron/val/seeds.txt .
 cp /mu2e/app/home/mu2epro/cron/val/recoInputFiles.txt .
+rsync -aur /mu2e/app/home/mu2epro/cron/val/valJobFcl .
 
-#tar --exclude="*.cc" --exclude="*.os" --exclude="$MUSE_BUILD_BASE/Offline/tmp/*" \
-#   -czf code.tgz Offline build *.txt
-TEMPBALL=$( muse tarball recoInputFiles.txt seeds.txt | grep "Tarball:" | awk '{print $2}' )
+TEMPBALL=$( muse tarball recoInputFiles.txt seeds.txt valJobFcl | grep "Tarball:" | awk '{print $2}' )
 
 RC=$?
 T1=$(date +%s)
