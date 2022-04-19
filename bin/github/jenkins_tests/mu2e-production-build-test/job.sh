@@ -207,7 +207,7 @@ mu2e/buildtest
 success
 The tests passed.
 ${JOB_URL}/${BUILD_NUMBER}/console
-:sunny: The tests passed at ${COMMIT_SHA}.
+:sunny: The build tests passed at ${COMMIT_SHA}.
 
 EOM
 
@@ -233,7 +233,7 @@ mu2e/buildtest
 failure
 The build succeeded, but other tests are failing.
 ${JOB_URL}/${BUILD_NUMBER}/console
-:umbrella: The tests failed for ${COMMIT_SHA}.
+:umbrella: The build tests failed for ${COMMIT_SHA}.
 
 EOM
 fi
