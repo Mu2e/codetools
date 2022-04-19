@@ -20,7 +20,7 @@ function prepare_repositories() {
         echo "[$(date)] Mu2e/$REPO - Checking out PR HEAD directly"
         git checkout ${COMMIT_SHA} #"pr${PULL_REQUEST}"
         git log -1
-        append_report_row "checkout" ":white_check_mark:" "Checked out ${COMMIT_SHA}"
+        append_report_row "checkout" ":white_check_mark:" "Checked out ${COMMIT_SHA} without merging into base branch"
     else
         echo "[$(date)] Mu2e/$REPO - Checking out latest commit on base branch, which is ${MASTER_COMMIT_SHA}"
         git checkout ${MASTER_COMMIT_SHA}
@@ -100,6 +100,8 @@ function prepare_repositories() {
             append_report_row "test with" ":white_check_mark:" "Included Mu2e/${REPO_NAME}#${THE_PR} @ ${THE_COMMIT_SHA} by merge"
 
         done
+    else
+        append_report_row "test with" ":white_check_mark:" "Command did not list any other PRs to include"
     fi
     
     cd ${WORKSPACE}/${REPO}
