@@ -100,6 +100,8 @@ function prepare_repositories() {
             append_report_row "test with" ":white_check_mark:" "Included Mu2e/${REPO_NAME}#${THE_PR} @ ${THE_COMMIT_SHA} by merge"
 
         done
+    else
+        append_report_row "test with" ":white_check_mark:" "Command did not list any other PRs to include"
     fi
     
     cd ${WORKSPACE}/${REPO}
