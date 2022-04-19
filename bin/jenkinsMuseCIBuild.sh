@@ -143,19 +143,12 @@ buildBranch() {
         return 1
     fi
 
-
-    echo "[$(date)] start DEBUG dump"
-    printenv
-    ups active
-    find $SWIG_FQ_DIR -ls
-    echo "[$(date)] end DEBUG dump"
-
-
     muse status
 
     #local SHORT=$MUSE_BUILD_BASE/Offline/lib/libmu2e_Validation_root.so
     #muse build -j 20 --mu2eCompactPrint  $SHORT >& build.log
-    muse build -j 20 --mu2eCompactPrint --mu2ePyWrap >& build.log
+    #muse build -j 20 --mu2eCompactPrint --mu2ePyWrap >& build.log
+    muse build -j 20 --mu2eCompactPrint >& build.log
     RC=$?
     if [ $RC -ne 0 ]; then
         echo "[$(date)] failed to run muse build"
