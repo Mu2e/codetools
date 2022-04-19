@@ -6,7 +6,7 @@
 #
 
 echo_date() {
-echo "[$(date)] $*" 
+    echo "[$(date)] $*"
 }
 
 echo_date "start build WORKDIR=$1 TBALL=$2"
@@ -14,13 +14,13 @@ echo_date "cd $1"
 WORKDIR=$1
 shift
 if [ -z "$WORKDIR" ]; then
-  echo "ERROR - no work dir provided - exit" 
+  echo "ERROR - no work dir provided - exit"
   exit 1
 fi
 TBALL=$1
 shift
 if [ -z "$TBALL" ]; then
-  echo "ERROR - no tarball file name provided - exit" 
+  echo "ERROR - no tarball file name provided - exit"
   exit 2
 fi
 
@@ -62,7 +62,7 @@ git -C Production show -q
 git -C Production rev-parse HEAD
 
 echo_date "muse setup"
-muse setup -1
+muse setup
 muse status
 
 

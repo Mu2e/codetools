@@ -5,14 +5,14 @@
 #
 
 echo_date() {
-echo "[$(date)] $*" 
+echo "[$(date)] $*"
 }
 
 echo_date "cd"
 WORKDIR="$1"
 shift
 if [ -z "$WORKDIR" ]; then
-  echo "ERROR - no work dir provided - exit" 
+  echo "ERROR - no work dir provided - exit"
   exit 1
 fi
 
@@ -28,7 +28,7 @@ source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
 source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
 setup muse
 setup codetools
-muse setup -1
+muse setup
 
 echo_date "start root overlaps"
 overlapCheck.sh

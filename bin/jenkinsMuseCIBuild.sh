@@ -53,46 +53,46 @@ getCode() {
     git clone https://github.com/Mu2e/Production  || return 1
 
 #    (
-#	cd Offline || return 1
-#	git remote rename origin mu2e  || return 2
-#	git checkout "$BRANCH" || return 3
-#	git rev-parse HEAD | cut -c 1-8 > ../hash.txt
-#	[ $? -ne 0 ] && return 4
+#        cd Offline || return 1
+#        git remote rename origin mu2e  || return 2
+#        git checkout "$BRANCH" || return 3
+#        git rev-parse HEAD | cut -c 1-8 > ../hash.txt
+#        [ $? -ne 0 ] && return 4
 #    )
 
 #    if ! cd Offline ; then
-#	echo "[$(date)]  could not cd Offline"
-#	return 1
+#        echo "[$(date)]  could not cd Offline"
+#        return 1
 #    fi
 #
-#    # set the remote 
+#    # set the remote
 #    echo "[$(date)] git rename remote"
 #    if ! git remote rename origin mu2e ; then
-#	echo "[$(date)]  could not rename remote"
-#	cd ..
-#	return 2
+#        echo "[$(date)]  could not rename remote"
+#        cd ..
+#        return 2
 #    fi
 #
 #    # define this potential build
 #    if ! git checkout "$BRANCH" ; then
-#	echo "[$(date)]  could not checkout branch $BRANCH"
-#	cd ..
-#	return 2
+#        echo "[$(date)]  could not checkout branch $BRANCH"
+#        cd ..
+#        return 2
 #    fi
 #
 #    export HASH=$( git rev-parse HEAD | cut -c 1-8 )
 #    if [ -z "$HASH" ] ; then
-#	echo "[$(date)] could not find hash"
-#	cd ..
-#	return 3
+#        echo "[$(date)] could not find hash"
+#        cd ..
+#        return 3
 #    fi
 ##    local DATE=$( git show $HASH | grep Date: | head -1 | \
 ##        awk '{print $2" "$3" "$4" "$5" "}' )
 ##    local DATESTR=$( date -d "$DATE" +%Y_%m_%d_%H_%M)
 ##    if [[ -z "$DATE" || -z "$DATESTR" ]] ; then
-##	echo "[$(date)][$BRANCH] could not parse branch date"
-##	cd $BUILDTOP
-##	return 4
+##        echo "[$(date)][$BRANCH] could not parse branch date"
+##        cd $BUILDTOP
+##        return 4
 ##    fi
 ##    local BUILD=$DATESTR_$HASH
 
@@ -105,14 +105,14 @@ getCode() {
 
 
 checkExists() {
-    
+
     # see if this hash is already built
     # eventually may need to check this platform specifically
     # when there are multiple platforms
     local TDIR=$BASECDIR/$BRANCH/$HASH/Offline
     if [ -d "$TDIR" ]; then
-	echo "[$(date)][$BRANCH] is up to date at build $BUILD"
-	return 1
+        echo "[$(date)][$BRANCH] is up to date at build $BUILD"
+        return 1
     fi
 
     return 0
@@ -130,25 +130,25 @@ buildBranch() {
 
     echo "[$(date)] start build for hash $HASH with BUILD=$BUILD"
 
-    muse setup -1 -q "$BUILD"
+    muse setup -q "$BUILD"
     RC=$?
     if [ $RC -ne 0 ]; then
-	echo "[$(date)] failed to run muse setup"
-	return 1
+        echo "[$(date)] failed to run muse setup"
+        return 1
     fi
 
     muse status
-    
+
     #local SHORT=$MUSE_BUILD_BASE/Offline/lib/libmu2e_Validation_root.so
     #muse build -j 20 --mu2eCompactPrint  $SHORT >& build.log
-    muse build -j 20 --mu2eCompactPrint  >& build.log
+    muse build -j 20 --mu2eCompactPrint --mu2ePyWrap >& build.log
     RC=$?
     if [ $RC -ne 0 ]; then
-	echo "[$(date)] failed to run muse build"
-	cat build.log
-	return 8
+        echo "[$(date)] failed to run muse build"
+        cat build.log
+        return 8
     fi
-    
+
     echo "[$(date)] start deps"
     muse build DEPS
     echo "[$(date)] start gdml"
@@ -170,13 +170,13 @@ tarball() {
 
     local FDIR="$BRANCH/$HASH"
     local TBALL=copyBack/${BRANCH}+${HASH}+${LABEL}.bz2
-    
+
 #    if ! tar  --transform="s|^|$FDIR|"   -czhf $TBALL Offline build ; then
-#	echo "[$(date)] failed to run tar"
-#	return 1
+#        echo "[$(date)] failed to run tar"
+#        return 1
 #    fi
 
-    muse setup -1
+    muse setup
 
     mkdir tar
 

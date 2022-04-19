@@ -1,8 +1,8 @@
 #! /bin/bash
 #
 # script to do DQM nightly validation tests
-# This is launched from the main script after the 
-# main validaiton job is done.
+# This is launched from the main script after the
+# main validation job is done.
 # This builds DQM repo, runs on reco output, runs DQM histos and metrics
 # and commits them.  It also commits the CPU and MEM metrics.
 # Once this is launched, it is independent of the main script.
@@ -13,7 +13,7 @@
 #
 #
 echo_date() {
-    echo "[$(date)] $*" 
+    echo "[$(date)] $*"
 }
 
 #
@@ -22,21 +22,21 @@ echo_date() {
 safe_cd() {
     local TDIR="$1"
     if [ -z "$TDIR" ]; then
-	echo "ERROR - safe_cd no argument"
-	exit 1
+        echo "ERROR - safe_cd no argument"
+        exit 1
      fi
     local EDIR=$(readlink -f $TDIR)
     local OWD="$PWD"
     [ "$EDIR" == "$OWD" ] && return 0
     if [ ! -d $EDIR ]; then
-	echo "ERROR - safe_cd not a valid dir: $EDIR"
-	exit 1
+        echo "ERROR - safe_cd not a valid dir: $EDIR"
+        exit 1
     fi
     echo_date "safe_cd $EDIR"
     cd $EDIR
     if [ "$PWD" != "$EDIR" ]; then
-	echo "ERROR - safe_cd did not suceed OWD=$OWD, EDIR=$EDIR, PWD=$PWD"
-	exit 1
+        echo "ERROR - safe_cd did not suceed OWD=$OWD, EDIR=$EDIR, PWD=$PWD"
+        exit 1
     fi
     return 0
 }
@@ -74,14 +74,14 @@ repo_build() {
     echo_date "start repo_build "
 
     if [ "$PWD" != "$DBUILD_DIR" ]; then
-	echo "ERROR - repo_build was not in the dqm area!"
-	return 1
+        echo "ERROR - repo_build was not in the dqm area!"
+        return 1
     fi
 
     git clone -q https://github.com/Mu2e/DQM  || return 1
 
     git -C DQM show
-    muse setup -1
+    muse setup
     muse status
     muse build -j 5 --mu2eCompactPrint >& build.log
     RC=$?
@@ -101,14 +101,14 @@ repo_build() {
 metrics() {
 
     if [ "$PWD" != "$DBUILD_DIR" ]; then
-	echo "ERROR - repo_build was not in the dqm area!"
-	return 1
+        echo "ERROR - repo_build was not in the dqm area!"
+        return 1
     fi
 
     NF=$( ls -1 $DATADIR/reco/art )
     if [ $NF -eq 0 ]; then
-	echo "ERROR no reco data files found"
-	return 1
+        echo "ERROR no reco data files found"
+        return 1
     fi
 
     local TIME=$(date +%Y-%m-%dT00:01:00)
@@ -127,9 +127,9 @@ metrics() {
     voms-proxy-info --all
 
     dqmTool commit-value  \
-	  --source "valNightly,reco,day,0" \
-	  --start "$TIME" \
-	  --value dqmMetrics.txt
+        --source "valNightly,reco,day,0" \
+        --start "$TIME" \
+        --value dqmMetrics.txt
 
     RC=$?
     echo "REPORT metrics commit RC=$RC"
@@ -156,7 +156,7 @@ stats() {
   local RCD=0
 
   while read LL
-  do 
+  do
       local TT=$(echo $LL | awk '{print $1}' )
       [ "$TT" != "LOGTIME" ] && continue
 
@@ -171,9 +171,9 @@ stats() {
       echo "ops,stats,MEM,${MEM},6.0,0" >> temp.txt
 
       dqmTool commit-value \
-	  --source "valNightly,${JJ},day,0" \
-	  --start "$TIME" \
-	  --value temp.txt
+          --source "valNightly,${JJ},day,0" \
+          --start "$TIME" \
+          --value temp.txt
 
       RC=$?
 
@@ -193,9 +193,9 @@ stats() {
 send_report() {
     grep REPORT $LOGFN | sed 's/REPORT//' > $DQMREPORT
     cat $DQMREPORT | mail -r valJobDqm \
-	-s "valJobDqm $(date +%m/%d/%y )" \
-	rlc@fnal.gov
-#	rlc@fnal.gov
+        -s "valJobDqm $(date +%m/%d/%y )" \
+        rlc@fnal.gov
+    #      rlc@fnal.gov
 }
 
 
@@ -233,5 +233,3 @@ stats
 send_report
 
 exit 0
-
-

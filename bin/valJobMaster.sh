@@ -5,7 +5,7 @@
 #
 
 echo_date() {
-echo "[$(date)] $*" 
+    echo "[$(date)] $*"
 }
 
 
@@ -172,15 +172,15 @@ define_reco() {
 build_code() {
     echo_date "Start build"
     if [ -z "$BUILD_DIR"  ]; then
-	echo_date "build_code called but $BUILD_DIR not defined"
-	return 1
+        echo_date "build_code called but $BUILD_DIR not defined"
+        return 1
     fi
     DD=$(dirname $BUILD_DIR)
     if [ -z "$DEBUG" ]; then
-	rm -rf $DD/03
-	mv $DD/02 $DD/03
-	mv $DD/01 $DD/02
-	mv $DD/current $DD/01
+        rm -rf $DD/03
+        mv $DD/02 $DD/03
+        mv $DD/01 $DD/02
+        mv $DD/current $DD/01
     fi
     mkdir -p $BUILD_DIR
 
@@ -218,8 +218,8 @@ check_code() {
     fi
 
     grep "REPORT" $BUILD_DIR/check | grep STATUS | grep -v check | \
-	sed 's/REPORT//' | sed 's/STATUS//' | \
-	    awk '{print "  " $0}' | tee -a $REPORT
+        sed 's/REPORT//' | sed 's/STATUS//' | \
+            awk '{print "  " $0}' | tee -a $REPORT
 
     grep REPORT $BUILD_DIR/check | sed 's/REPORT //' >> $WEBREPORT
 
@@ -329,11 +329,11 @@ recover_jobs() {
   while [ $J -lt $NMAX ]
   do
     local TT=$( printf "%02d" $J )
-    local TS=$( ls -1 $DD/val | grep $TT  ) 
-    #BUG local SS=$( ls -1l $DD/val | grep $TT  | awk '{print $5}' ) 
+    local TS=$( ls -1 $DD/val | grep $TT  )
+    #BUG local SS=$( ls -1l $DD/val | grep $TT  | awk '{print $5}' )
     local SS=""
     if [ -n "$TS" ]; then
-	SS=$( ls -1l $DD/val/$TS  | awk '{print $5}' ) 
+        SS=$( ls -1l $DD/val/$TS  | awk '{print $5}' )
     fi
     [ -z "$SS" ] && SS=0
     #echo_date "    loop $J TT=$TT   TS=$TS  SS=$SS"
@@ -343,15 +343,15 @@ recover_jobs() {
       # remove any partial output files
       local OUTTMP=$DD/art/${LABEL[$I]}_${TT}.art
       if [ -f $OUTTMP ]; then
-	  echo_date "rm failed job output file $OUTTMP"
-	  rm -f $DD/art/${LABEL[$I]}_${TT}.art
-	  rm -f $DD/art/${LABEL[$I]}_${TT}.root
-	  rm -f $DD/val/val_${LABEL[$I]}_${TT}.root
+          echo_date "rm failed job output file $OUTTMP"
+          rm -f $DD/art/${LABEL[$I]}_${TT}.art
+          rm -f $DD/art/${LABEL[$I]}_${TT}.root
+          rm -f $DD/val/val_${LABEL[$I]}_${TT}.root
       fi
       # if it crashed, there may be a useful log file
       if [ -f $DD/log/${LABEL[$I]}_${TT}.log ]; then
-	  mv  $DD/log/${LABEL[$I]}_${TT}.log \
-	      $DD/log/${LABEL[$I]}_${TT}.log_crashed
+          mv  $DD/log/${LABEL[$I]}_${TT}.log \
+              $DD/log/${LABEL[$I]}_${TT}.log_crashed
       fi
 
       NREC=$(( $NREC + 1 ))
@@ -386,7 +386,7 @@ recover_jobs() {
     J=$(($J+1))
   done
 
-  
+
   return
 }
 
@@ -418,7 +418,7 @@ wait_jobs() {
   done
 
 
-  echo_date "done waiting, check for needed recovery"  
+  echo_date "done waiting, check for needed recovery"
   I=0
   REC=0
   while [ $I -lt $NPROJ ]
@@ -492,7 +492,7 @@ ana_logs() {
   do
     grep "TimeReport CPU" $FF | head -1 | awk '{print $4}' >> $TMP
   done
-  local CPU=$( ana_numbers $TMP ) 
+  local CPU=$( ana_numbers $TMP )
 
   rm -f $TMP
   for FF in $(ls -1 $DD/*)
@@ -523,7 +523,7 @@ collect_summaries() {
         VOLCHECKG=`egrep 'Checking overlaps for volume' $OUTDIR/${LABEL[$I]}/log/*.log | grep OK | wc -l`
         VOLCHECKB=`egrep 'Checking overlaps for volume' $OUTDIR/${LABEL[$I]}/log/*.log  | grep -v OK | wc -l`
         echo "Volume checks:  OK=${VOLCHECKG},  not OK=$VOLCHECKB" | tee -a $REPORT
-        egrep 'Checking overlaps for volume' $OUTDIR/${LABEL[$I]}/log/*.log | grep -v OK 
+        egrep 'Checking overlaps for volume' $OUTDIR/${LABEL[$I]}/log/*.log | grep -v OK
       elif [ "${CHECK[$I]}" == "statPlots" ]; then
         local OUTROOT=$OUTDIR/summary/${LABEL[$I]}.root
         [ -f "$OUTROOT" ] && mv $OUTROOT ${OUTROOT}_$(date +%s)
@@ -535,7 +535,7 @@ collect_summaries() {
       fi
       local NUMBERS=$( ana_logs $I )
       echo "LOGTIME ${LABEL[$I]} $NUMBERS" >> $WEBREPORT
-    else 
+    else
       echo_date "******* skipping check on ${LABEL[$I]}"
       echo "LOGTIME ${LABEL[$I]} " >> $WEBREPORT
     fi
@@ -555,25 +555,25 @@ valcompare() {
     if [ "${CHECK[$I]}" == "statPlots" ]; then
       if [ "${STATUS[$I]}" != "complete" ]; then
         echo_date "valcompare ${LABEL[$I]} had status ${STATUS[$I]}, skipping"
-	# CSTATUS[$I] will remain undefined
-	echo "MISSING ${LABEL[$I]}" >> $REPORT
-	echo "GRIDS MISSING ${LABEL[$I]}" >> $WEBREPORT
+        # CSTATUS[$I] will remain undefined
+        echo "MISSING ${LABEL[$I]}" >> $REPORT
+        echo "GRIDS MISSING ${LABEL[$I]}" >> $WEBREPORT
       else
-	echo_date "valcompare ${LABEL[$I]} had status ${STATUS[$I]}, comparing"
+        echo_date "valcompare ${LABEL[$I]} had status ${STATUS[$I]}, comparing"
         local NVAL=$OUTDIR/summary/${LABEL[$I]}.root
         local OVAL=""
         local DAYS=0
-        while [[ -z "$OVAL" && $DAYS -lt 20 ]]; do 
-	  DAYS=$(($DAYS+1))
-	  DTEST=$(date -d "- $DAYS day" +%Y/%m/%d)
-	  OVAL=$BASE_DIR/$DTEST/summary/${LABEL[$I]}.root
+        while [[ -z "$OVAL" && $DAYS -lt 20 ]]; do
+          DAYS=$(($DAYS+1))
+          DTEST=$(date -d "- $DAYS day" +%Y/%m/%d)
+          OVAL=$BASE_DIR/$DTEST/summary/${LABEL[$I]}.root
           [ ! -f $OVAL ] && OVAL=""
         done
-	if [ $DAYS -ge 20 ]; then
-	  echo_date "valcompare did not find comparison after checking $DAYS days"
-	  echo "FAIL ${LABEL[$I]} did not find comparison" >> $REPORT
-	  echo "GRIDS FAIL ${LABEL[$I]}" >> $WEBREPORT
-	else
+        if [ $DAYS -ge 20 ]; then
+          echo_date "valcompare did not find comparison after checking $DAYS days"
+          echo "FAIL ${LABEL[$I]} did not find comparison" >> $REPORT
+          echo "GRIDS FAIL ${LABEL[$I]}" >> $WEBREPORT
+        else
           echo_date "valcompare finds old val on $DTEST, $DAYS day(s) ago"
           local TMP=$( mktemp )
           valCompare -s $OVAL $NVAL > $TMP
@@ -584,23 +584,23 @@ valcompare() {
           [ -z "$NSOSO1" ] && NSOSO1=999
           local NSOSO2=$(grep "passed tight comparison, not perfect match" $TMP | awk '{print $1}')
           [ -z "$NSOSO2" ] && NSOSO2=999
-	  local NSOSO=$(($NSOSO1+$NSOSO2))
+          local NSOSO=$(($NSOSO1+$NSOSO2))
 
           echo "valcompare results ${LABEL[$I]} NBAD $NBAD  NSOSO $NSOSO"
           rm -f $TMP
           CSTATUS[$I]=$NBAD
           if [ $NBAD -eq 0 ]; then
-	    if [ $NSOSO -eq 0 ]; then
-		echo "GRIDS PERFECT ${LABEL[$I]}" >> $WEBREPORT
-		echo "PERFECT ${LABEL[$I]} plots matched from $DAYS day(s) ago" >> $REPORT
-	    else
-		echo "GRIDS OK ${LABEL[$I]}" >> $WEBREPORT
-		echo "OK  ${LABEL[$I]} plots matched from $DAYS day(s) ago" >> $REPORT
-	    fi
+            if [ $NSOSO -eq 0 ]; then
+                echo "GRIDS PERFECT ${LABEL[$I]}" >> $WEBREPORT
+                echo "PERFECT ${LABEL[$I]} plots matched from $DAYS day(s) ago" >> $REPORT
+            else
+                echo "GRIDS OK ${LABEL[$I]}" >> $WEBREPORT
+                echo "OK  ${LABEL[$I]} plots matched from $DAYS day(s) ago" >> $REPORT
+            fi
           else
             echo "FAIL ${LABEL[$I]} $NBAD plots failed match from $DAYS day(s) ago" >> $REPORT
             echo "GRIDS FAIL ${LABEL[$I]}" >> $WEBREPORT
-          
+
             local PLOT_DIR=$WEB_DIR_DAY/${LABEL[$I]}
             mkdir -p $PLOT_DIR
             local PLOT_URI=$PLOT_DIR/result.html
@@ -609,33 +609,33 @@ valcompare() {
             PLOTS[$I]=$PLOT_URI
 
           fi # NBAD
-	fi # comparison found
+        fi # comparison found
       fi # COMPLETE
     fi # statPlot
 
     # if this is the stops job, try to find and print the stops rate
     if [ "${LABEL[$I]}" == "stops" ]; then
-	local STOPSRATE=0
-	local STOPSFN=$OUTDIR/summary/${LABEL[$I]}.root
-	if [ -f $STOPSFN ]; then
-	    local TMP=$(mktemp)
-	    root.exe -l -q -b stops.C'("'$STOPSFN'")' >& $TMP
-	    RC=$?
-	    if [ $RC -eq 0 ]; then
-		local DEN=$(( ${NJOB[$I]} * ${NEV[$I]} ))
-		local NUM=$(cat $TMP | awk '{if($1=="STOPSCOUNT") print $2}' )
-		STOPSRATE=$((${NUM}*1000000/${DEN}))
-		echo "STOPS NUM $NUM DEN $DEN RATE $STOPSRATE"
-	    else
-		echo "ERROR - stops count extraction failed, log follows"
-		cat $TMP
-	    fi
-	    rm -f $TMP
-	fi # if stops file exists
+        local STOPSRATE=0
+        local STOPSFN=$OUTDIR/summary/${LABEL[$I]}.root
+        if [ -f $STOPSFN ]; then
+            local TMP=$(mktemp)
+            root.exe -l -q -b stops.C'("'$STOPSFN'")' >& $TMP
+            RC=$?
+            if [ $RC -eq 0 ]; then
+                local DEN=$(( ${NJOB[$I]} * ${NEV[$I]} ))
+                local NUM=$(cat $TMP | awk '{if($1=="STOPSCOUNT") print $2}' )
+                STOPSRATE=$((${NUM}*1000000/${DEN}))
+                echo "STOPS NUM $NUM DEN $DEN RATE $STOPSRATE"
+            else
+                echo "ERROR - stops count extraction failed, log follows"
+                cat $TMP
+            fi
+            rm -f $TMP
+        fi # if stops file exists
 
         echo "  Stops rate $STOPSRATE E-6" >> $REPORT
-	echo "STOPSRATE $STOPSRATE" >> $WEBREPORT
-	
+        echo "STOPSRATE $STOPSRATE" >> $WEBREPORT
+
     fi # if stops job
 
     I=$(($I+1))
@@ -650,13 +650,13 @@ colorByStat() {
     # no result
     COLOR=#deeaee
     if [ "$1" == "PERFECT" ]; then
-	COLOR=#588c7e
+        COLOR=#588c7e
     elif [ "$1" == "OK" ]; then
-	COLOR=#79a397
+        COLOR=#79a397
     elif [ "$1" == "MISSING" ]; then
-	COLOR=#fbefcc
+        COLOR=#fbefcc
     elif [ "$1" == "FAIL" ]; then
-	COLOR=#c83349
+        COLOR=#c83349
     fi
 }
 
@@ -696,7 +696,7 @@ nightlyweb() {
   echo -n "<TR align=""center""><TD width=100>Date</TD><TD width=80>build</TD><TD width=80>tests</TD>" >> $TF
   for LL in $LIST
   do
-	echo -n "<TD  width=120>$LL</TD>" >> $TF
+        echo -n "<TD  width=120>$LL</TD>" >> $TF
   done
   echo "</TR>" >> $TF
 
@@ -708,7 +708,7 @@ nightlyweb() {
     local DDR=$(echo $DD | cut -c 1-4)_$(echo $DD | cut -c 5-6)/$(echo $DD | cut -c 7-8)
     # date
     echo -n "<TR align=""center""><TD>$DDF</TD>" >> $TF
-    
+
     # build
     STAT=$( grep build $DDR/valJobWeb.txt | grep STATUS | awk '{print $2}')
     [ -z "$STAT" ] && STAT="-"
@@ -720,7 +720,7 @@ nightlyweb() {
     else
         echo "<TD bgcolor=$COLOR>log</TD>" >> $TF
     fi
-    
+
     # tests
     STAT=$( grep check $DDR/valJobWeb.txt | grep STATUS | awk '{print $2}')
     [ -z "$STAT" ] && STAT="-"
@@ -730,7 +730,7 @@ nightlyweb() {
     else
         echo "<TD bgcolor=$COLOR> - </TD>" >> $TF
     fi
-    
+
     # now loop over the list of grid job tests
     for LL in $LIST
     do
@@ -743,10 +743,10 @@ nightlyweb() {
         echo "<TD bgcolor=$COLOR> - </TD>" >> $TF
       fi
     done # loop over grid job tests
-    
+
     # finish the row for this day
     echo "</TR>" >> $TF
-	
+
   done # loop over days
 
   cat tail.html >> $TF
@@ -811,7 +811,7 @@ rlc@fnal.gov,genser@fnal.gov,kutschke@fnal.gov,dave_brown@lbl.gov,david.brown@lo
 
 
 #
-# if there is a argument, then being run as a test, 
+# if there is a argument, then being run as a test,
 # write t oa test area and do not run the web part
 #
 DEBUG="$1"
@@ -934,4 +934,3 @@ ssh -n -f mu2egpvm01 "$HOME/cron/val/valJobDqm.sh >& $HOME/cron/val/valJobDqm.lo
 
 # send summary
 exit_proc 0 success
-
