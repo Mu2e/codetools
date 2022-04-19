@@ -20,7 +20,7 @@ function prepare_repositories() {
         echo "[$(date)] Mu2e/$REPO - Checking out PR HEAD directly"
         git checkout ${COMMIT_SHA} #"pr${PULL_REQUEST}"
         git log -1
-        append_report_row "checkout" ":white_check_mark:" "Checked out ${COMMIT_SHA}"
+        append_report_row "checkout" ":white_check_mark:" "Checked out ${COMMIT_SHA} without merging into base branch"
     else
         echo "[$(date)] Mu2e/$REPO - Checking out latest commit on base branch, which is ${MASTER_COMMIT_SHA}"
         git checkout ${MASTER_COMMIT_SHA}
