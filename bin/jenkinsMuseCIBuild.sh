@@ -1,5 +1,11 @@
 #!/bin/bash
 #
+# THis script is triggers by the jenkins process which pools for
+# changes in the head of the Offline git repo.  When triggered,
+# Offline is built andm in a separate process, it is pulled to
+# /cvmfs/mu2e-development
+#
+#
 # expects in the environment:
 # label=7
 # GIT_BRANCH=origin/master (or other branch)
@@ -136,6 +142,14 @@ buildBranch() {
         echo "[$(date)] failed to run muse setup"
         return 1
     fi
+
+
+    echo "[$(date)] start DEBUG dump"
+    printenv
+    ups active
+    find $SWIG_FQ_DIR -ls
+    echo "[$(date)] end DEBUG dump"
+
 
     muse status
 
