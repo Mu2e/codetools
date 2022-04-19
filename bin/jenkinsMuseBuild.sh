@@ -44,7 +44,7 @@ git -C Offline show -1
 git -c Offline status
 
 echo "[$(date)] muse setup"
-muse -v setup -1 -q $BUILDTYPE
+muse -v setup -q $BUILDTYPE
 [ $? -ne 0 ] && exit 1
 
 LOG=copyBack/build-${MU2E_TAG}-${MUSE_STUB}.log
@@ -75,5 +75,3 @@ muse tarball -e copyBack -t ./tar -r Offline/$MU2E_TAG
 [ $? -ne 0 ] && exit 1
 
 exit 0
-
-
