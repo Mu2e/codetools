@@ -165,7 +165,12 @@ buildBranch() {
     muse build RMSO
 
     # save the log file
-    mv build.log $MUSE_BUILD_BASE/Offline/gen/txt
+    ls -al
+    echo "log dir $MUSE_BUILD_BASE/Offline/gen/txt"
+    ls -al $MUSE_BUILD_BASE/Offline/gen/txt
+    mkdir -p  $MUSE_BUILD_BASE/Offline/gen/txt
+    cp build.log $MUSE_BUILD_BASE/Offline/gen/txt
+    cp build.log copyBack/build_${BUILD}.log
 
     return 0
 }
@@ -204,8 +209,6 @@ tarball() {
 
 # set a modern git, initial paths
 source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
-# needs to be built
-setup muse
 
 export BUILDTOP=$PWD
 export BASECDIR=/cvmfs/mu2e-development.opensciencegrid.org/museCIBuild
