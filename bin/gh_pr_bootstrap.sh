@@ -114,7 +114,7 @@ function setup_cmsbot() {
             cd -
         )
     fi
-    pip install -U -r ${CMS_BOT_DIR}/requirements.txt
+    pip install -r ${CMS_BOT_DIR}/requirements.txt
     pip freeze
 }
 
