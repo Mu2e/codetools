@@ -147,6 +147,7 @@ buildBranch() {
 
     #local SHORT=$MUSE_BUILD_BASE/Offline/lib/libmu2e_Validation_root.so
     #muse build -j 20 --mu2eCompactPrint  $SHORT >& build.log
+    echo "DEBUG00 BUILD=$BUILD"
     muse build -j 20 --mu2eCompactPrint --mu2ePyWrap >& build.log
     RC=$?
     if [ $RC -ne 0 ]; then
@@ -155,22 +156,34 @@ buildBranch() {
         return 8
     fi
 
+    echo "DEBUG01 BUILD=$BUILD  $PWD"
     echo "[$(date)] start deps"
     muse build DEPS
+    echo "DEBUG02 BUILD=$BUILD  $PWD"
     echo "[$(date)] start gdml"
     muse build GDML
+    echo "DEBUG03 BUILD=$BUILD  $PWD"
     echo "[$(date)] start git packing"
     muse build GITPACK
+    echo "DEBUG04 BUILD=$BUILD  $PWD"
     echo "[$(date)] start rm of build temp areas"
     muse build RMSO
 
+    echo "DEBUG05 BUILD=$BUILD $PWD"
     # save the log file
     ls -al
     echo "log dir $MUSE_BUILD_BASE/Offline/gen/txt"
     ls -al $MUSE_BUILD_BASE/Offline/gen/txt
-    mkdir -p  $MUSE_BUILD_BASE/Offline/gen/txt
+    #mkdir -p  $MUSE_BUILD_BASE/Offline/gen/txt
+    echo "DEBUG06 BUILD=$BUILD $PWD"
     cp build.log $MUSE_BUILD_BASE/Offline/gen/txt
-    cp build.log copyBack/build_${BUILD}.log
+    echo "log dir2 $MUSE_BUILD_BASE/Offline/gen/txt"
+    ls -al $MUSE_BUILD_BASE/Offline/gen/txt
+    echo "ls copyBack "
+    ls -al copyBack
+    cp build.log copyBack/build_test.log
+    echo "ls copyBack2 "
+    ls -al copyBack
 
     return 0
 }
