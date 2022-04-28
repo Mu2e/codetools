@@ -50,7 +50,7 @@ muse -v setup -q $BUILDTYPE
 LOG=copyBack/build-${MU2E_TAG}-${MUSE_STUB}.log
 
 echo "[$(date)] muse build"
-muse build -j 20 >& $LOG
+muse build --mu2ePyWrap -j 20 >& $LOG
 if [ $? -eq 0 ]; then
   echo "[$(date)] build success"
 else
