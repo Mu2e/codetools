@@ -65,8 +65,8 @@ echo "[$(date)] muse build RELEASE"
 muse build RELEASE >& $RLOG
 [ $? -ne 0 ] && exit 1
 
-cp $LOG $MUSE_BUILD_BASE/Offline/gen/txt
-cp $RLOG $MUSE_BUILD_BASE/Offline/gen/txt
+cp $LOG $MUSE_BUILD_BASE/Offline/gen/txt/build.txt
+cp $RLOG $MUSE_BUILD_BASE/Offline/gen/txt/rbuild.txt
 
 mkdir tar
 

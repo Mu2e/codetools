@@ -58,52 +58,6 @@ getCode() {
 
     git clone https://github.com/Mu2e/Production  || return 1
 
-#    (
-#        cd Offline || return 1
-#        git remote rename origin mu2e  || return 2
-#        git checkout "$BRANCH" || return 3
-#        git rev-parse HEAD | cut -c 1-8 > ../hash.txt
-#        [ $? -ne 0 ] && return 4
-#    )
-
-#    if ! cd Offline ; then
-#        echo "[$(date)]  could not cd Offline"
-#        return 1
-#    fi
-#
-#    # set the remote
-#    echo "[$(date)] git rename remote"
-#    if ! git remote rename origin mu2e ; then
-#        echo "[$(date)]  could not rename remote"
-#        cd ..
-#        return 2
-#    fi
-#
-#    # define this potential build
-#    if ! git checkout "$BRANCH" ; then
-#        echo "[$(date)]  could not checkout branch $BRANCH"
-#        cd ..
-#        return 2
-#    fi
-#
-#    export HASH=$( git rev-parse HEAD | cut -c 1-8 )
-#    if [ -z "$HASH" ] ; then
-#        echo "[$(date)] could not find hash"
-#        cd ..
-#        return 3
-#    fi
-##    local DATE=$( git show $HASH | grep Date: | head -1 | \
-##        awk '{print $2" "$3" "$4" "$5" "}' )
-##    local DATESTR=$( date -d "$DATE" +%Y_%m_%d_%H_%M)
-##    if [[ -z "$DATE" || -z "$DATESTR" ]] ; then
-##        echo "[$(date)][$BRANCH] could not parse branch date"
-##        cd $BUILDTOP
-##        return 4
-##    fi
-##    local BUILD=$DATESTR_$HASH
-
-#    cd ..
-#    echo "[$(date)] returning from getCode"
 
     return 0
 
@@ -168,8 +122,7 @@ buildBranch() {
     muse build RMSO
 
     # save the log file
-    cp build.log $MUSE_BUILD_BASE/Offline/gen/txt
-    echo "log dir2 $MUSE_BUILD_BASE/Offline/gen/txt"
+    cp build.log $MUSE_BUILD_BASE/Offline/gen/txt/build.txt
     ls -al $MUSE_BUILD_BASE/Offline/gen/txt
     cp build.log copyBack/build_${BUILD}.log
 
@@ -183,15 +136,7 @@ tarball() {
     local FDIR="$BRANCH/$HASH"
     local TBALL=copyBack/${BRANCH}+${HASH}+${LABEL}.bz2
 
-#    if ! tar  --transform="s|^|$FDIR|"   -czhf $TBALL Offline build ; then
-#        echo "[$(date)] failed to run tar"
-#        return 1
-#    fi
-
     muse setup
-
-    echo "log dir3 $MUSE_BUILD_BASE/Offline/gen/txt"
-    ls -al $MUSE_BUILD_BASE/Offline/gen/txt
 
     mkdir tar
 
