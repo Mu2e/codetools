@@ -3,7 +3,7 @@
 # build musings based on files in MuseConfig/musing
 # inputs from jenkins parameters:
 # MUSING=SimJob
-# VERISON=v00_00_00
+# VERSION=v00_00_00
 # label=prof
 #
 
@@ -114,14 +114,19 @@ fi
 
 MUSINGS=/cvmfs/mu2e.opensciencegrid.org/Musings
 
-linkReg="^link/*"
+backReg="^backing/*"
 for REPO in $REPOS
 do
-    if [[ $REPO =~ $linkReg ]]; then
+    if [[ $REPO =~ $backReg ]]; then
+        if [ -d "backing" ]; then
+            echo "Error request for backing while backing exists, REPO=$REPO"
+            ls -alh
+            exit 1
+        fi
         RR=$(echo $REPO | awk -F/ '{print $2}' )
         VV=$(echo $REPO | awk -F/ '{print $3}' )
-        echo "[$(date)] linking $RR/$VV"
-        muse link $MUSINGS/$RR/$VV/$RR
+        echo "[$(date)] backing $RR/$VV"
+        muse backing $MUSINGS/$RR/$VV
         [ $? -ne 0 ] && exit 1
     else
         RR=$(echo $REPO | awk -F/ '{print $1}' )
@@ -131,6 +136,7 @@ do
         [ $? -ne 0 ] && exit 1
         git -C $RR checkout $VV
         [ $? -ne 0 ] && exit 1
+        git -C $RR show -1
     fi
 
 done
@@ -139,48 +145,53 @@ echo "[$(date)] muse setup -q $label $ENVSET"
 muse setup -q $label $ENVSET
 [ $? -ne 0 ] && exit 1
 
+echo "[$(date)] muse staus"
+muse status
+echo "[$(date)] ls"
+ls -l
+
+TAG=${MUSING}_${VERSION}_${MUSE_STUB}
+LOG=copyBack/build_${TAG}.blog
+RLOG=copyBack/release_${TAG}.blog
+
 echo "[$(date)] muse build"
-muse build -j $NCPU --mu2eCompactPrint
+muse build -j $NCPU --mu2eCompactPrint --mu2ePyWrap \
+   >& $LOG
 [ $? -ne 0 ] && exit 1
 
-[]
+if [ $? -eq 0 ]; then
+  echo "[$(date)] build success"
+else
+  echo "[$(date)] build failed - tail of log:"
+  tail -100 $LOG
+  exit 1
+fi
 
-#git -C Offline checkout -b temp_work $MU2E_TAG
-#[ $? -ne 0 ] && exit 1
-#
-#echo "[`date`] show what is checked out"
-#git -C Offline show -1
-#git -c Offline status
-#
-#echo "[$(date)] muse setup"
-#muse -v setup -1 -q $BUILDTYPE
-#[ $? -ne 0 ] && exit 1
-#
-#LOG=copyBack/build-${MU2E_TAG}-${MUSE_STUB}.log
-#
-#echo "[$(date)] muse build"
-#muse build -j 20 >& $LOG
-#if [ $? -eq 0 ]; then
-#  echo "[$(date)] build success"
-#else
-#  echo "[$(date)] build failed - tail of log:"
-#  tail -100 $LOG
-#  exit 1
-#fi
-#
-#RLOG=copyBack/build-release-${MU2E_TAG}-${MUSE_STUB}.log
-#
-#echo "[$(date)] muse build RELEASE"
-#muse build RELEASE >& $RLOG
-#[ $? -ne 0 ] && exit 1
-#
-#cp $LOG $MUSE_BUILD_BASE/Offline/gen/txt
-#cp $RLOG $MUSE_BUILD_BASE/Offline/gen/txt
-#
-#mkdir tar
-#
-#echo "[$(date)] muse tarball"
-#muse tarball -e copyBack -t ./tar -r Offline/$MU2E_TAG
-#[ $? -ne 0 ] && exit 1
+
+echo "[$(date)] muse build RELEASE"
+muse build RELEASE >& $RLOG
+if [ $? -ne 0 ]; then
+    echo "[$(date)] release build failed"
+    tail -100 $RLOG
+    exit 1
+else
+    echo "[$(date)] release build success"
+fi
+
+
+cp $LOG $MUSE_BUILD_BASE/Offline/gen/txt
+cp $RLOG $MUSE_BUILD_BASE/Offline/gen/txt
+
+mkdir tar
+
+echo "[$(date)] muse tarball"
+muse tarball -e copyBack -t ./tar -r Offline/$VERSION
+if [ $? -ne 0 ]; then
+    echo "[$(date)] tarball failed"
+    exit 1
+else
+    echo "[$(date)] tarball success"
+fi
+
 
 exit 0
