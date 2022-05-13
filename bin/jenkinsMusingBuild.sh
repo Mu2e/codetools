@@ -4,7 +4,8 @@
 # inputs from jenkins parameters:
 # MUSING=SimJob
 # VERSION=v00_00_00
-# label=prof
+# BUILDTYPE=prof
+# label=SLF7
 #
 
 
@@ -33,7 +34,8 @@ echo "[`date`] printenv after setup"
 printenv
 
 
-echo "[$(date)] starting with MUSING=$MUSING VERSION=$VERSION label=$label"
+echo "[$(date)] starting with MUSING=$MUSING VERSION=$VERSION"
+echo "       BUILDTYPE=$BUILDTYPE label=$label"
 
 if [ -z "$MUSING" ]; then
     echo "ERROR - required MUSING parameter is not set"
@@ -41,6 +43,10 @@ if [ -z "$MUSING" ]; then
 fi
 if [ -z "$VERSION" ]; then
     echo "ERROR - required VERSION parameter is not set"
+    exit 1
+fi
+if [ -z "$BUILDTYPE" ]; then
+    echo "ERROR - required BUILDTYPE parameter is not set"
     exit 1
 fi
 if [ -z "$label" ]; then
@@ -92,7 +98,7 @@ ree="^[pu][0-9]{3}$"
 for DD in $DEPS
 do
     WW=$(echo $DD | awk -F/ '{print $1}' )
-    if [ "$WW" == "envset"]; then
+    if [ "$WW" == "envset" ]; then
         WW=$(echo $DD | awk -F/ '{print $2}' )
         if [[ ! "$WW" =~ $ree ]]; then
             echo "ERROR - malformed envset $DD"
@@ -141,8 +147,8 @@ do
 
 done
 
-echo "[$(date)] muse setup -q $label $ENVSET"
-muse setup -q $label $ENVSET
+echo "[$(date)] muse setup -q $BUILDTYPE $ENVSET"
+muse setup -q $BUILDTYPE $ENVSET
 [ $? -ne 0 ] && exit 1
 
 echo "[$(date)] muse staus"
@@ -155,9 +161,7 @@ LOG=copyBack/build_${TAG}.blog
 RLOG=copyBack/release_${TAG}.blog
 
 echo "[$(date)] muse build"
-muse build -j $NCPU --mu2eCompactPrint --mu2ePyWrap \
-   >& $LOG
-[ $? -ne 0 ] && exit 1
+muse build -j $NCPU --mu2eCompactPrint --mu2ePyWrap >& $LOG
 
 if [ $? -eq 0 ]; then
   echo "[$(date)] build success"
@@ -168,6 +172,7 @@ else
 fi
 
 
+if [ -d Offline ]; then
 echo "[$(date)] muse build RELEASE"
 muse build RELEASE >& $RLOG
 if [ $? -ne 0 ]; then
@@ -178,20 +183,21 @@ else
     echo "[$(date)] release build success"
 fi
 
-
 cp $LOG $MUSE_BUILD_BASE/Offline/gen/txt
 cp $RLOG $MUSE_BUILD_BASE/Offline/gen/txt
+fi
 
 mkdir tar
+mkdir tarball
 
 echo "[$(date)] muse tarball"
-muse tarball -e copyBack -t ./tar -r Offline/$VERSION
+muse tarball -e tarball -t ./tar -r $MUSING/$VERSION
 if [ $? -ne 0 ]; then
     echo "[$(date)] tarball failed"
     exit 1
 else
     echo "[$(date)] tarball success"
 fi
-
+cp tarball/*/* copyBack
 
 exit 0
