@@ -39,6 +39,10 @@ setup_cmsbot
 
 echo "[$(date)] setup ${REPOSITORY}"
 setup_build_repos "${REPOSITORY}"
+# need the following to get access to $MUSE_ENVSET_DIR, used in the whitespace check
+source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
+setup mu2e
+echo "[$(date)] muse envset dir: ${MUSE_ENVSET_DIR}"
 
 cd "$WORKSPACE/$REPO" || exit 1
 echo ${MASTER_COMMIT_SHA} > master-commit-sha.txt
