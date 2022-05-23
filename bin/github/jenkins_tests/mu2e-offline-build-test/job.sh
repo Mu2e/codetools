@@ -104,17 +104,23 @@ WS_STAT_STRING=""
 # this file should have already been made back in setup_build_repos, but just in case:
 base_branch_file="${WORKSPACE}/repo${REPO}_pr${PULL_REQUEST}_baseBranch.txt"
 if [ ! -f $base_branch_file ]; then
-    cmsbot_write_pr_base $REPOSITORY $PULL_REQUEST $base_branch_file True
+    cmsbot_write_pr_base $REPOSITORY $PULL_REQUEST $base_branch_file True || echo "Failed to retrieve base branch name for repo ${REPOSITORY} PR ${PULL_REQUEST}"
 fi
-repo_base_branch=$(cat $base_branch_file)
-$MUSE_ENVSET_DIR/pre-commit origin/$repo_base_branch >> $WORKSPACE/whitespace_errs.log
-whitespace_ret=$?
-if [ $whitespace_ret == 0 ]; then
-    WS_STATUS=":white_check_mark:"
-    WS_STAT_STRING="no whitespace errors found"
-    echo "${WS_STAT_STRING}" >> $WORKSPACE/whitespace_errs.log
+if [ -f $base_branch_file ]; then
+    repo_base_branch=$(cat $base_branch_file)
+    $MUSE_ENVSET_DIR/pre-commit origin/$repo_base_branch >> $WORKSPACE/whitespace_errs.log
+    whitespace_ret=$?
+    if [ $whitespace_ret == 0 ]; then
+        WS_STATUS=":white_check_mark:"
+        WS_STAT_STRING="no whitespace errors found"
+        echo "${WS_STAT_STRING}" >> $WORKSPACE/whitespace_errs.log
+    else
+        WS_STAT_STRING="found whitespace errors"
+    fi
 else
-    WS_STAT_STRING="found whitespace errors"
+    echo "[$(date)] cannot do whitespace check without knowing the base branch"
+    WS_STAT_STRING="could not do whitespace check"
+    echo "${WS_STAT_STRING}; no base branch name file" >> $WORKSPACE/whitespace_errs.log
 fi
 
 
