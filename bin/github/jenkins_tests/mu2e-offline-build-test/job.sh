@@ -39,6 +39,10 @@ setup_cmsbot
 
 echo "[$(date)] setup ${REPOSITORY}"
 setup_build_repos "${REPOSITORY}"
+# need the following to get access to $MUSE_ENVSET_DIR, used in the whitespace check
+source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
+setup mu2e
+echo "[$(date)] muse envset dir: ${MUSE_ENVSET_DIR}"
 
 cd "$WORKSPACE/$REPO" || exit 1
 echo ${MASTER_COMMIT_SHA} > master-commit-sha.txt
@@ -59,6 +63,7 @@ TD_FIXM_STATUS=":wavy_dash:"
 CE_STATUS=":wavy_dash:"
 BUILD_STATUS=":wavy_dash:"
 CT_STATUS=":wavy_dash:"
+WS_STATUS=":wavy_dash:"
 
 echo "" > $WORKSPACE/fixme_todo.log
 for MOD_FILE in $MODIFIED_PR_FILES
@@ -91,6 +96,31 @@ TD_FIXM_COUNT=$((FIXM_COUNT + TD_COUNT))
 
 if [ $TD_FIXM_COUNT == 0 ]; then
     TD_FIXM_STATUS=":white_check_mark:"
+fi
+
+echo "[$(date)] whitespace check before merge"
+echo "" > $WORKSPACE/whitespace_errs.log
+WS_STAT_STRING=""
+# this file should have already been made back in setup_build_repos, but just in case:
+base_branch_file="${WORKSPACE}/repo${REPO}_pr${PULL_REQUEST}_baseBranch.txt"
+if [ ! -f $base_branch_file ]; then
+    cmsbot_write_pr_base $REPOSITORY $PULL_REQUEST $base_branch_file True || echo "Failed to retrieve base branch name for repo ${REPOSITORY} PR ${PULL_REQUEST}"
+fi
+if [ -f $base_branch_file ]; then
+    repo_base_branch=$(cat $base_branch_file)
+    $MUSE_ENVSET_DIR/pre-commit origin/$repo_base_branch >> $WORKSPACE/whitespace_errs.log
+    whitespace_ret=$?
+    if [ $whitespace_ret == 0 ]; then
+        WS_STATUS=":white_check_mark:"
+        WS_STAT_STRING="no whitespace errors found"
+        echo "${WS_STAT_STRING}" >> $WORKSPACE/whitespace_errs.log
+    else
+        WS_STAT_STRING="found whitespace errors"
+    fi
+else
+    echo "[$(date)] cannot do whitespace check without knowing the base branch"
+    WS_STAT_STRING="could not do whitespace check"
+    echo "${WS_STAT_STRING}; no base branch name file" >> $WORKSPACE/whitespace_errs.log
 fi
 
 
@@ -240,6 +270,7 @@ fi
 # append_report_row is in github_common
 append_report_row "FIXME, TODO" "${TD_FIXM_STATUS}" "[TODO (${TD_COUNT}) FIXME (${FIXM_COUNT}) in ${FILES_SCANNED} files](${JOB_URL}/${BUILD_NUMBER}/artifact/fixme_todo.log)"
 append_report_row "clang-tidy" "${CT_STATUS}" "[${CT_STAT_STRING}](${JOB_URL}/${BUILD_NUMBER}/artifact/clang-tidy.log)"
+append_report_row "whitespace check" "${WS_STATUS}" "[${WS_STAT_STRING}](${JOB_URL}/${BUILD_NUMBER}/artifact/whitespace_errs.log)"
 
 
 cat >> "$WORKSPACE"/gh-report.md <<- EOM
