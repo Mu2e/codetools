@@ -96,6 +96,8 @@ TD_FIXM_COUNT=$((FIXM_COUNT + TD_COUNT))
 
 if [ $TD_FIXM_COUNT == 0 ]; then
     TD_FIXM_STATUS=":white_check_mark:"
+else
+    TD_FIXM_STATUS=":large_orange_diamond:"
 fi
 
 echo "[$(date)] whitespace check before merge"
@@ -115,6 +117,7 @@ if [ -f $base_branch_file ]; then
         WS_STAT_STRING="no whitespace errors found"
         echo "${WS_STAT_STRING}" >> $WORKSPACE/whitespace_errs.log
     else
+        WS_STATUS=":large_orange_diamond:"
         WS_STAT_STRING="found whitespace errors"
     fi
 else

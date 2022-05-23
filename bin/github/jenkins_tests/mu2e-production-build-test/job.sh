@@ -91,6 +91,8 @@ TD_FIXM_COUNT=$((FIXM_COUNT + TD_COUNT))
 
 if [ $TD_FIXM_COUNT == 0 ]; then
     TD_FIXM_STATUS=":white_check_mark:"
+else
+    TD_FIXM_STATUS=":large_orange_diamond:"
 fi
 
 
