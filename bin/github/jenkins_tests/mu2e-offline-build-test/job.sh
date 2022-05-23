@@ -109,9 +109,10 @@ fi
 repo_base_branch=$(cat $base_branch_file)
 $MUSE_ENVSET_DIR/pre-commit origin/$repo_base_branch >> $WORKSPACE/whitespace_errs.log
 whitespace_ret=$?
-if [ whitespace_ret == 0 ]; then
+if [ $whitespace_ret == 0 ]; then
     WS_STATUS=":white_check_mark:"
     WS_STAT_STRING="no whitespace errors found"
+    echo "${WS_STAT_STRING}" >> $WORKSPACE/whitespace_errs.log
 else
     WS_STAT_STRING="found whitespace errors"
 fi
