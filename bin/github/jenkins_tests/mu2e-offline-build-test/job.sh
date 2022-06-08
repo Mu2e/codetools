@@ -47,13 +47,22 @@ echo "[$(date)] muse envset dir: ${MUSE_ENVSET_DIR}"
 cd "$WORKSPACE/$REPO" || exit 1
 echo ${MASTER_COMMIT_SHA} > master-commit-sha.txt
 
-git checkout ${COMMIT_SHA} || exit 1
 
-export MODIFIED_PR_FILES=$(git --no-pager diff --name-only FETCH_HEAD $(git merge-base FETCH_HEAD main))
-CT_FILES="" # files to run in clang tidy
+# to-do and whitespace checking:
 
+echo "[$(date)] obtaining PR root commit for TODO, FIXME, and whitespace checks"
+root_branch=
+# this file should have already been made back in setup_build_repos, but just in case:
+base_branch_file="${WORKSPACE}/repo${REPO}_pr${PULL_REQUEST}_baseBranch.txt"
+if [ ! -f $base_branch_file ]; then
+    cmsbot_write_pr_base $REPOSITORY $PULL_REQUEST $base_branch_file True || echo "Failed to retrieve base branch name for repo ${REPOSITORY} PR ${PULL_REQUEST}"
+fi
+if [ -f $base_branch_file ]; then
+    root_branch=$(cat $base_branch_file)
+else
+    echo "[$(date)] failed to get base branch for PR"
+fi
 
-echo "[$(date)] FIXME, TODO check before merge"
 FIXM_COUNT=0
 TD_COUNT=0
 BUILD_NECESSARY=0
@@ -64,53 +73,61 @@ CE_STATUS=":wavy_dash:"
 BUILD_STATUS=":wavy_dash:"
 CT_STATUS=":wavy_dash:"
 WS_STATUS=":wavy_dash:"
-
-echo "" > $WORKSPACE/fixme_todo.log
-for MOD_FILE in $MODIFIED_PR_FILES
-do
-    if [[ "$MOD_FILE" == *.cc ]] || [[ "$MOD_FILE" == *.hh ]]; then
-        BUILD_NECESSARY=1
-        FILES_SCANNED=$((FILES_SCANNED + 1))
-        TD_temp=$(grep -c TODO "${MOD_FILE}")
-        TD_COUNT=$((TD_temp + TD_COUNT))
-
-        FIXM_temp=$(grep -c FIXME "${MOD_FILE}")
-        FIXM_COUNT=$((FIXM_temp + FIXM_COUNT))
-
-        echo "${MOD_FILE} has ${TD_temp} TODO, ${FIXM_temp} FIXME comments." >> "$WORKSPACE/fixme_todo.log"
-        grep TODO ${MOD_FILE} >> $WORKSPACE/fixme_todo.log
-        grep FIXME ${MOD_FILE} >> $WORKSPACE/fixme_todo.log
-        echo "---" >> $WORKSPACE/fixme_todo.log
-        echo "" >> $WORKSPACE/fixme_todo.log
-
-        # we only wish to process .cc files in clang tidy
-        if [[ "$MOD_FILE" == *.cc ]]; then
-            CT_FILES="$MOD_FILE $CT_FILES"
-        fi
-    else
-        echo "skipped $MOD_FILE since not a cpp file"
-    fi
-done
-
-TD_FIXM_COUNT=$((FIXM_COUNT + TD_COUNT))
-
-if [ $TD_FIXM_COUNT == 0 ]; then
-    TD_FIXM_STATUS=":white_check_mark:"
-else
-    TD_FIXM_STATUS=":large_orange_diamond:"
-fi
-
-echo "[$(date)] whitespace check before merge"
-echo "" > $WORKSPACE/whitespace_errs.log
 WS_STAT_STRING=""
-# this file should have already been made back in setup_build_repos, but just in case:
-base_branch_file="${WORKSPACE}/repo${REPO}_pr${PULL_REQUEST}_baseBranch.txt"
-if [ ! -f $base_branch_file ]; then
-    cmsbot_write_pr_base $REPOSITORY $PULL_REQUEST $base_branch_file True || echo "Failed to retrieve base branch name for repo ${REPOSITORY} PR ${PULL_REQUEST}"
-fi
-if [ -f $base_branch_file ]; then
-    repo_base_branch=$(cat $base_branch_file)
-    $MUSE_ENVSET_DIR/pre-commit origin/$repo_base_branch >> $WORKSPACE/whitespace_errs.log
+
+# need to do this right before finding the root commit, since FETCH_HEAD refers to whatever the last thing to be fetched was
+git checkout ${COMMIT_SHA} || exit 1
+
+if [ $root_branch ]; then
+    # get the root commit where the PR branched off, do TODO, FIXME, and whitespace checks relative to that
+    root_commit=$(git merge-base FETCH_HEAD $root_branch)
+    echo "[$(date) root commit is $root_commit]"
+
+    export MODIFIED_PR_FILES=$(git --no-pager diff --name-only FETCH_HEAD $root_commit)
+    CT_FILES="" # files to run in clang tidy
+
+
+    echo "[$(date)] FIXME, TODO check before merge"
+
+    echo "" > $WORKSPACE/fixme_todo.log
+    for MOD_FILE in $MODIFIED_PR_FILES
+    do
+        if [[ "$MOD_FILE" == *.cc ]] || [[ "$MOD_FILE" == *.hh ]]; then
+            BUILD_NECESSARY=1
+            FILES_SCANNED=$((FILES_SCANNED + 1))
+            TD_temp=$(grep -c TODO "${MOD_FILE}")
+            TD_COUNT=$((TD_temp + TD_COUNT))
+
+            FIXM_temp=$(grep -c FIXME "${MOD_FILE}")
+            FIXM_COUNT=$((FIXM_temp + FIXM_COUNT))
+
+            echo "${MOD_FILE} has ${TD_temp} TODO, ${FIXM_temp} FIXME comments." >> "$WORKSPACE/fixme_todo.log"
+            grep TODO ${MOD_FILE} >> $WORKSPACE/fixme_todo.log
+            grep FIXME ${MOD_FILE} >> $WORKSPACE/fixme_todo.log
+            echo "---" >> $WORKSPACE/fixme_todo.log
+            echo "" >> $WORKSPACE/fixme_todo.log
+
+            # we only wish to process .cc files in clang tidy
+            if [[ "$MOD_FILE" == *.cc ]]; then
+                CT_FILES="$MOD_FILE $CT_FILES"
+            fi
+        else
+            echo "skipped $MOD_FILE since not a cpp file"
+        fi
+    done
+
+    TD_FIXM_COUNT=$((FIXM_COUNT + TD_COUNT))
+
+    if [ $TD_FIXM_COUNT == 0 ]; then
+        TD_FIXM_STATUS=":white_check_mark:"
+    else
+        TD_FIXM_STATUS=":large_orange_diamond:"
+    fi
+
+    echo "[$(date)] whitespace check before merge"
+    echo "" > $WORKSPACE/whitespace_errs.log
+
+    $MUSE_ENVSET_DIR/pre-commit $root_commit >> $WORKSPACE/whitespace_errs.log
     whitespace_ret=$?
     if [ $whitespace_ret == 0 ]; then
         WS_STATUS=":white_check_mark:"
@@ -121,9 +138,11 @@ if [ -f $base_branch_file ]; then
         WS_STAT_STRING="found whitespace errors"
     fi
 else
-    echo "[$(date)] cannot do whitespace check without knowing the base branch"
+    # were unable to find the root branch, can't do these checks
+    echo "[$(date)] cannot do TODO, FIXME, or whitespace check without knowing the base branch"
     WS_STAT_STRING="could not do whitespace check"
     echo "${WS_STAT_STRING}; no base branch name file" >> $WORKSPACE/whitespace_errs.log
+    echo "could not do TODO+FIXME check no base branch name file" >> $WORKSPACE/fixme_todo.log
 fi
 
 
