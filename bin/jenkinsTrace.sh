@@ -1,28 +1,21 @@
 #!/bin/bash
 #
-# build a tagged version of mu2e_artdaq_core in Jenkins system
-# the following are defined by the project:
-# export BUILDTYPE=prof
-# export label=SLF7
+# build a tagged version of TRACE in Jenkins system
 # the following are defined as jenkins project parameters
-# export PACKAGE_VERSION=v2_02_02
-# export COMPILER=e17
-# export ART_VERSION=s58
-# export PYTHON_VERSION_TAG=py2
-# to run locally, define these in the environment first
+# export PACKAGE_VERSION=v3_17_05
+# TRACE is a noarch product, has no qualifiers
 #
 
 
 OS=`echo $label | tr "[A-Z]" "[a-z]"`
 
-echo "[`date`] start $PACKAGE_VERSION $COMPILER $BUILDTYPE $OS "
+echo "[`date`] start $PACKAGE_VERSION $OS"
 echo "[`date`] PWD"
 pwd
 echo "[`date`] directories"
-rm -rf pcie_linux_kernel_module build products
+rm -rf trace build products
 mkdir -p build
 mkdir -p products
-mkdir -p copyBack
 export LOCAL_DIR=$PWD
 
 echo "[`date`] ls of local dir"
@@ -43,22 +36,18 @@ export CETPKG_J=10
 
 echo "[`date`] git clone"
 # Make top level working directory, clone source and checkout tag
-git clone https://github.com/Mu2e/pcie_linux_kernel_module.git
+git clone https://github.com/art-daq/trace.git
 RC=$?
 [ $RC -ne 0 ] && exit $RC
 
 echo "[`date`] checkout"
-cd pcie_linux_kernel_module
+cd trace
 git checkout -b work $PACKAGE_VERSION
 
 cd $LOCAL_DIR/build
 
-FLAG="-p"
-[ "$BUILDTYPE" == "debug" ] && FLAG="-d"
-PFLAG=""
-[ -n "$PYTHON_VERSION_TAG" ] && PFLAG=":$PYTHON_VERSION_TAG"
-echo "[`date`] setup_for_development FLAG=$FLAG"
-source ../pcie_linux_kernel_module/ups/setup_for_development $FLAG ${COMPILER}:${ART_VERSION}${PFLAG}
+echo "[`date`] setup_for_development"
+source ../trace/ups/setup_for_development
 RC=$?
 [ $RC -ne 0 ] && exit $RC
 
@@ -70,14 +59,11 @@ RC=$?
 echo "[`date`] buildtool RC=$RC"
 
 PACKAGE_VERSION_DOT=`echo $PACKAGE_VERSION | sed -e 's/v//' -e 's/_/\./g' `
-PYTHON_TAG=""
-[ -n "$PYTHON_VERSION_TAG" ] && PYTHON_TAG="-$PYTHON_VERSION_TAG"
-
-TBALL=pcie_linux_kernel_module-${PACKAGE_VERSION_DOT}-${OS}-x86_64-${COMPILER}-${ART_VERSION}-${BUILDTYPE}${PYTHON_TAG}.tar.bz2
+TBALL=trace-${PACKAGE_VERSION_DOT}-x86_64.tar.bz2
 
 cd $LOCAL_DIR
 
-tar -cj -C products -f $TBALL pcie_linux_kernel_module
+tar -cj -C products -f $TBALL trace
 RC=$?
 [ $RC -ne 0 ] && exit $RC
 
@@ -87,6 +73,3 @@ echo "[`date`] ls"
 ls -l *
 
 echo "[`date`] normal exit"
-
-exit
-
