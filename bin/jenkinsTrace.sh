@@ -63,7 +63,7 @@ TBALL=trace-${PACKAGE_VERSION_DOT}-x86_64.tar.bz2
 
 cd $LOCAL_DIR
 
-tar -cj -C products -f $TBALL trace
+tar -cj -C products -f $TBALL TRACE
 RC=$?
 [ $RC -ne 0 ] && exit $RC
 
