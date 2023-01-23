@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# build a tagged version of mu2e_artdaq_core in Jenkins system
+# build a tagged version of mu2e_pcie_utils in Jenkins system
 # the following are defined by the project:
 # export BUILDTYPE=prof
 # export label=SLF7
@@ -19,7 +19,7 @@ echo "[`date`] start $PACKAGE_VERSION $COMPILER $BUILDTYPE $OS "
 echo "[`date`] PWD"
 pwd
 echo "[`date`] directories"
-rm -rf pcie_linux_kernel_module build products
+rm -rf pcie_linux_kernel_module mu2e_pcie_utils build products
 mkdir -p build
 mkdir -p products
 mkdir -p copyBack
@@ -43,12 +43,12 @@ export CETPKG_J=10
 
 echo "[`date`] git clone"
 # Make top level working directory, clone source and checkout tag
-git clone https://github.com/Mu2e/pcie_linux_kernel_module.git
+git clone https://github.com/Mu2e/mu2e_pcie_utils.git
 RC=$?
 [ $RC -ne 0 ] && exit $RC
 
 echo "[`date`] checkout"
-cd pcie_linux_kernel_module
+cd mu2e_pcie_utils
 git checkout -b work $PACKAGE_VERSION
 
 cd $LOCAL_DIR/build
@@ -58,7 +58,7 @@ FLAG="-p"
 PFLAG=""
 [ -n "$PYTHON_VERSION_TAG" ] && PFLAG=":$PYTHON_VERSION_TAG"
 echo "[`date`] setup_for_development FLAG=$FLAG"
-source ../pcie_linux_kernel_module/ups/setup_for_development $FLAG ${COMPILER}:${ART_VERSION}${PFLAG}
+source ../mu2e_pcie_utils/ups/setup_for_development $FLAG ${COMPILER}:${ART_VERSION}${PFLAG}
 RC=$?
 [ $RC -ne 0 ] && exit $RC
 
@@ -73,11 +73,11 @@ PACKAGE_VERSION_DOT=`echo $PACKAGE_VERSION | sed -e 's/v//' -e 's/_/\./g' `
 PYTHON_TAG=""
 [ -n "$PYTHON_VERSION_TAG" ] && PYTHON_TAG="-$PYTHON_VERSION_TAG"
 
-TBALL=pcie_linux_kernel_module-${PACKAGE_VERSION_DOT}-${OS}-x86_64-${COMPILER}-${ART_VERSION}-${BUILDTYPE}${PYTHON_TAG}.tar.bz2
+TBALL=mu2e_pcie_utils-${PACKAGE_VERSION_DOT}-${OS}-x86_64-${COMPILER}-${ART_VERSION}-${BUILDTYPE}${PYTHON_TAG}.tar.bz2
 
 cd $LOCAL_DIR
 
-tar -cj -C products -f $TBALL pcie_linux_kernel_module
+tar -cj -C products -f $TBALL mu2e_pcie_utils
 RC=$?
 [ $RC -ne 0 ] && exit $RC
 
