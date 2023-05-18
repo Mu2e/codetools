@@ -191,7 +191,7 @@ else
 
         # make sure clang tools can find the compdb
         # in an obvious location
-        mv gen/compile_commands.json .
+        cp ../build/*/compilation_db.json ./compile_commands.json
 
         source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
         setup mu2e
