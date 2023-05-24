@@ -186,12 +186,15 @@ else
 
     echo "[$(date)] run clang tidy"
     (
-        cd $WORKSPACE/$REPO || exit 1;
+        cd $WORKSPACE || exit 1;
         set --
 
         # make sure clang tools can find the compdb
         # in an obvious location
-        cp ../build/*/compilation_db.json ./compile_commands.json
+        cp build/*/compilation_db.json ./compile_commands.json
+
+        ls -l
+        echo CT_FILES=${CT_FILES}
 
         source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
         setup mu2e
