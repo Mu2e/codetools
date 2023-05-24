@@ -211,11 +211,11 @@ else
 fi
 
 if grep -q warning: "$WORKSPACE/clang-tidy.log"; then
-    CT_STATUS=":wavy_dash:"
+    CT_STATUS=":large_orange_diamond:"
 fi
 
 if grep -q error: "$WORKSPACE/clang-tidy.log"; then
-    CT_STATUS=":wavy_dash:"
+    CT_STATUS=":large_orange_diamond:"
 fi
 
 CT_ERROR_COUNT=$(grep -c error: "$WORKSPACE/clang-tidy.log")
