@@ -198,7 +198,7 @@ else
 
         source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
         setup mu2e
-        setup clang v5_0_1
+        setup clang v14_0_6c
 
         # run clang-tidy
         CLANG_TIDY_ARGS="-extra-arg=-isystem$CLANG_FQ_DIR/include/c++/v1 -p . -j 24"
@@ -339,28 +339,7 @@ EOM
 sed -i '/Command execution time:/d' scons.log
 sed -i '/SConscript:/d' scons.log
 
-${CMS_BOT_DIR}/upload-job-logfiles gh-report.md ${WORKSPACE}/*.log > gist-link.txt 2> upload_logfile_error_response.txt
-
-if [ $? -ne 0 ]; then
-    # do nothing for now, but maybe add an error message in future
-    echo "Couldn't upload logfiles..."
-
-else
-    GIST_LINK=$( cat gist-link.txt )
-    cat >> "$WORKSPACE"/gh-report.md <<- EOM
-
-Log files have been uploaded [here.](${GIST_LINK})
-
-EOM
-
-fi
-
-
 cmsbot_report "$WORKSPACE/gh-report.md"
-
-echo "[$(date)] cleaning up old gists"
-${CMS_BOT_DIR}/cleanup-old-gists
 
 wait;
 exit $BUILDTEST_OUTCOME;
-
