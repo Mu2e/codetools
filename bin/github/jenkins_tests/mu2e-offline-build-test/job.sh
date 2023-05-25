@@ -198,7 +198,7 @@ else
 
         source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
         setup mu2e
-        setup clang v5_0_1
+        setup clang v14_0_6c
 
         # run clang-tidy
         CLANG_TIDY_ARGS="-extra-arg=-isystem$CLANG_FQ_DIR/include/c++/v1 -p . -j 24"
