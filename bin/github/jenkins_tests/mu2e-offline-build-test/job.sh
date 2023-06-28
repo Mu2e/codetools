@@ -201,7 +201,7 @@ else
         setup clang v14_0_6c
 
         # run clang-tidy
-        CLANG_TIDY_ARGS="-extra-arg=-isystem$CLANG_FQ_DIR/include/c++/v1 -p . -j 24"
+        CLANG_TIDY_ARGS="-extra-arg=-isystem$CLANG_FQ_DIR/include/c++/v1  -extra-arg=-isystem$CLANG_FQ_DIR/include/x86_64-unknown-linux-gnu/c++/v1 -p . -j 24"
         run-clang-tidy ${CLANG_TIDY_ARGS} ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
     )
 
