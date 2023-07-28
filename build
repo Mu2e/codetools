@@ -15,9 +15,11 @@ Option Value          Description
     -C                clean up working directories ( optional, default=no)
     -c                VALUE cmake version and qualifiers ( optional, default="v3_18_2", used only for the build step)
     -d upsRoot        path to the root of the target UPS directory (required if -i selected)
+    -D buildDirDebug  name of the directory that holds the debug build (default=kinkal_debug)
     -i                install as a UPS product ( optional, default=no)
     -j value          maximum number of build threads (optional, default =1)
     -n                do a new clone; if absent expect on to be present (optional, default=no)
+    -P buildDirProf   name of the directory that holds the profile build (default=kinkal_profile)
     -r value          root version and qualifiers (optional, if not specfied it will use UPS active)
     -s versionSuffix  Quals additional qualifiers to add as a suffix to the UPS version of the product ( optional, default = "" )
     -t                run the tests (optional, default=no, only works if -b is also specified )
@@ -162,17 +164,29 @@ clean(){
 install() {
   echo "Begin install."
 
-  if [[ -d ${buildDirProf} && -n "$doProf" ]]; then
-    echo "Begin install of prof version."
-    ${thisDir}/install ${gitVersion} ${upsRoot} ${rootVer} ${profRootQuals} ${buildDirProf} ${versionSuffix}
+  retval=0
+
+  if [[ -n ${doProf} ]]; then
+    if [[ -d ${buildDirProf} ]]; then
+      echo "Begin install of prof version."
+      ${thisDir}/install ${gitVersion} ${upsRoot} ${rootVer} ${profRootQuals} ${buildDirProf} ${versionSuffix}
+    else
+      echo "ERROR - requested to install " ${buildDirProf} " but this directory does not exist."
+      retval=1
+    fi
   fi
 
-  if [[ -d ${buildDirDebug} && -n "$doDebug" ]]; then
-    echo "Begin install of debug version."
-    ${thisDir}/install ${gitVersion} ${upsRoot} ${rootVer} ${debugRootQuals} ${buildDirDebug} ${versionSuffix}
+  if [[ -n ${doDebug} ]]; then
+    if [[ -d ${buildDirDebug} ]]; then
+      echo "Begin install of debug version."
+      ${thisDir}/install ${gitVersion} ${upsRoot} ${rootVer} ${debugRootQuals} ${buildDirDebug} ${versionSuffix}
+    else
+      echo "ERROR - requested to install " ${buildDirDebug} " but this directory does not exist."
+      retval=1
+    fi
   fi
 
-  return 0
+  return ${retval}
 }
 
 makeTarFiles() {
@@ -203,9 +217,6 @@ makeTarFiles() {
 
 productName=KinKal
 
-buildDirProf="kinkal_profile"
-buildDirDebug="kinkal_debug"
-
 # The directory that contains this script (and others that it will run).
 thisDir=`dirname $(readlink -f $0)`
 
@@ -222,12 +233,15 @@ doTest=""
 gitVersion=""
 nBuildThreads="1"
 upsRoot="${PWD}/artexternals"
+buildDirProf="kinkal_profile"
+buildDirDebug="kinkal_debug"
 rootCmdLineOption=""
 versionSuffix=""
 
+
 export KinKal_Installer_Verbose=""
 
-while getopts abCc:d:ij:nr:s:tv:Vzh OPT; do
+while getopts abCc:d:D:ij:nP:r:s:tv:Vzh OPT; do
     case $OPT in
         b)
             doBuild=true
@@ -239,12 +253,18 @@ while getopts abCc:d:ij:nr:s:tv:Vzh OPT; do
         d)
             upsRoot=$OPTARG
             ;;
+        D)
+            buildDirDebug=$OPTARG
+            ;;
         i)
             doInstall=true
             ;;
         j)  nBuildThreads=$OPTARG
             ;;
         n)  doClone=true
+            ;;
+        P)
+            buildDirProf=$OPTARG
             ;;
         r)  rootCmdLineOption=$OPTARG
             ;;
@@ -294,6 +314,8 @@ if [[ -n "$KinKal_Installer_Verbose" ]]; then
   echo "cmakever:          " ${cmakever}
   echo "doInstall:         " ${doInstall}
   echo "upsRoot:           " ${upsRoot}
+  echo "buildDirProf:      " ${buildDirProf}
+  echo "buildDirDebug:     " ${buildDirDebug}
   echo "rootCmdLineOption: " ${rootCmdLineOption}
   echo "doTest:            " ${doTest}
   echo "gitVersion:        " ${gitVersion}

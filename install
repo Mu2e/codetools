@@ -71,6 +71,15 @@ if ! [ -e ${upsRoot} ]; then
   cp -r ${KINKAL_TO_UPS_DIR}/.updfiles ${upsRoot}
 fi
 
+if ! [ -d ${upsRoot}/.upsfiles ]; then
+  cp -r ${KINKAL_TO_UPS_DIR}/.upsfiles ${upsRoot}
+fi
+
+if ! [ -d ${upsRoot}/.updfiles ]; then
+  cp -r ${KINKAL_TO_UPS_DIR}/.updfiles ${upsRoot}
+fi
+
+
 # Need this for get-directory-name
 setup cetpkgsupport
 
