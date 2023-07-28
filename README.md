@@ -91,7 +91,6 @@ and artexternals/KinKal.
 * Should KinKal_to_UPS be installed in UPS?
 * In the case of installing a prebuilt version of KinKal, is there a way to automatically determine the git tag so that it does not need to be given by hand in the install command?
 * Add an option to add additional qualifiers to the KinKal product
-* Is it OK that the names kinkal_profile, kinkal_debug are hard coded?  If not, we can make options to define them.
 * What additional checks for corner cases are needed?
 * I need to roll up the return statuses to one overall exit status and update the exit message.
 * Rename the tar.bz2 files to match the scisoft standard.
