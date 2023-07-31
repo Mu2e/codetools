@@ -13,14 +13,16 @@ usage: build <options>
 Option Value          Description
     -b                build code (optional, default = no )
     -C                clean up working directories ( optional, default=no)
-    -c                VALUE cmake version and qualifiers ( optional, default="v3_18_2", used only for the build step)
+    -c                VALUE cmake version and qualifiers ( optional, default=\"v3_26_6\", used only for the build step)
     -d upsRoot        path to the root of the target UPS directory (required if -i selected)
     -D buildDirDebug  name of the directory that holds the debug build (default=kinkal_debug)
     -i                install as a UPS product ( optional, default=no)
     -j value          maximum number of build threads (optional, default =1)
+    -m setup args     Use muse mode to discover root version; in compatible with -r
     -n                do a new clone; if absent expect on to be present (optional, default=no)
     -P buildDirProf   name of the directory that holds the profile build (default=kinkal_profile)
-    -r value          root version and qualifiers (optional, if not specfied it will use UPS active)
+    -r value          root version and qualifiers (optional, if not specfied it will use UPS active);
+                      incompatible with -m.
     -s versionSuffix  Quals additional qualifiers to add as a suffix to the UPS version of the product ( optional, default = "" )
     -t                run the tests (optional, default=no, only works if -b is also specified )
     -v gitVersion     name of the git tag (required)
@@ -33,10 +35,6 @@ For additional details see: https://github.com/Mu2e/KinKal_to_UPS
 }
 
 checkConfiguration(){
-  if [[ -z "$doBuild" && -z "$doInstall" && -z "$doClean" && -z "doTar" ]]; then
-    echo "ERROR - no actions requested"
-    return 1
-  fi
 
   if [[ -n "$doInstall" && -z "$gitVersion" ]]; then
     echo "ERROR - you must supply a version when requesting an install."
@@ -46,6 +44,10 @@ checkConfiguration(){
   if [[ -n "$doBuild" && -z "$cmakever" ]]; then
     echo "ERROR - you must supply a cmake version when requesting a build."
     return 3
+  fi
+
+  if [[ -z "$doBuild" && -z "$doInstall" && -z "$doClean" && -z "$doTar" && -z "$doTest" ]]; then
+    echo "WARNING  - no actions requested; hope that's OK"
   fi
 
   return 0
@@ -213,6 +215,39 @@ makeTarFiles() {
   return 0
 }
 
+# Discover the version of root that will be setup by
+# the envset specified by the -m argument
+# The argument may be an empty string to select the
+# default muse behaviour.
+discoverRootFromMuse(){
+
+  # Check for consistent arguments.
+  if [[ -n "$rootCmdLineOption" ]]; then
+    echo "ERROR - you must not supply both -m and -r."
+    exit 9
+  fi
+
+  if [[ -z "${SETUP_MUSE}" ]]; then
+    echo "ERROR - Muse must be setup in your environment to use the -m option."
+    exit 10
+  fi
+
+  export -f muse
+  tmp=`${thisDir}/discover_root_ver ${museArgs} `
+  rval=$?
+  if [[ "${rval}" != "0" ]]; then
+    echo ${tmp}
+    exit "${rval}"
+  fi
+  rootCmdLineOption="${tmp}"
+
+  if [[ -n "$KinKal_Installer_Verbose" ]]; then
+    echo "Root version discovered from muse: " ${rootCmdLineOption}
+  fi
+  unset tmp
+}
+
+
 # ********** main **********
 
 productName=KinKal
@@ -223,7 +258,7 @@ thisDir=`dirname $(readlink -f $0)`
 source ${thisDir}/funcs
 
 # Default values for command line argument options
-cmakever="v3_18_2"
+cmakever="v3_26_4"
 doClone=""
 doBuild=""
 doClean=""
@@ -232,6 +267,8 @@ doTar=""
 doTest=""
 gitVersion=""
 nBuildThreads="1"
+useMuse=""
+museArgs=""
 upsRoot="${PWD}/artexternals"
 buildDirProf="kinkal_profile"
 buildDirDebug="kinkal_debug"
@@ -241,7 +278,7 @@ versionSuffix=""
 
 export KinKal_Installer_Verbose=""
 
-while getopts abCc:d:D:ij:nP:r:s:tv:Vzh OPT; do
+while getopts abCc:d:D:ij:m:nP:r:s:tv:Vzh OPT; do
     case $OPT in
         b)
             doBuild=true
@@ -260,6 +297,9 @@ while getopts abCc:d:D:ij:nP:r:s:tv:Vzh OPT; do
             doInstall=true
             ;;
         j)  nBuildThreads=$OPTARG
+            ;;
+        m)  useMuse=true
+            museArgs=$OPTARG
             ;;
         n)  doClone=true
             ;;
@@ -299,6 +339,16 @@ done
 doProf="true"
 doDebug="true"
 
+if [[ -n "$useMuse" ]]; then
+
+  export -f muse
+  discoverRootFromMuse
+  if [[ "$?" != "0" ]]; then
+    exit 11
+  fi
+fi
+
+
 processROOTQualifiers
 if [[ "$?" != "0" ]]; then
   exit 1
@@ -320,6 +370,8 @@ if [[ -n "$KinKal_Installer_Verbose" ]]; then
   echo "doTest:            " ${doTest}
   echo "gitVersion:        " ${gitVersion}
   echo "nBuildThreads:     " ${nBuildThreads}
+  echo "useMuse:           " ${useMuse}
+  echo "museArgs:          " ${museArgs}
   echo " "
   echo "Resolved root information:"
   echo "Root version:            " ${rootVer}
