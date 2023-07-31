@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# Print the root version the comes with a particular muse setup.
+#
+
+muse setup $@ >& /dev/null
+tmp=`ups active | awk '$1 == "root" {print $2 " " $5$6}'`
+
+if [[ -z "$tmp" ]]; then
+ exit 1
+fi
+
+echo "$tmp"
+
+exit 0
