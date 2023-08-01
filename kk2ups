@@ -171,7 +171,7 @@ install() {
   if [[ -n ${doProf} ]]; then
     if [[ -d ${buildDirProf} ]]; then
       echo "Begin install of prof version."
-      ${thisDir}/install ${gitVersion} ${upsRoot} ${rootVer} ${profRootQuals} ${buildDirProf} ${versionSuffix}
+      ${thisDir}/kk2ups_install ${gitVersion} ${upsRoot} ${rootVer} ${profRootQuals} ${buildDirProf} ${versionSuffix}
     else
       echo "ERROR - requested to install " ${buildDirProf} " but this directory does not exist."
       retval=1
@@ -181,7 +181,7 @@ install() {
   if [[ -n ${doDebug} ]]; then
     if [[ -d ${buildDirDebug} ]]; then
       echo "Begin install of debug version."
-      ${thisDir}/install ${gitVersion} ${upsRoot} ${rootVer} ${debugRootQuals} ${buildDirDebug} ${versionSuffix}
+      ${thisDir}/kk2ups_install ${gitVersion} ${upsRoot} ${rootVer} ${debugRootQuals} ${buildDirDebug} ${versionSuffix}
     else
       echo "ERROR - requested to install " ${buildDirDebug} " but this directory does not exist."
       retval=1
@@ -233,7 +233,7 @@ discoverRootFromMuse(){
   fi
 
   export -f muse
-  tmp=`${thisDir}/discover_root_ver ${museArgs} `
+  tmp=`${thisDir}/kk2ups_discover_root_ver ${museArgs} `
   rval=$?
   if [[ "${rval}" != "0" ]]; then
     echo ${tmp}
@@ -393,13 +393,13 @@ if [ -n "$doBuild" ]; then
     exit 3
   fi
   if [[ -n "${doProf}" ]]; then
-    ${thisDir}/build_one_version ${cmakever} "${rootVer} -q${plusProfRootQuals}" ${buildDirProf} ${nBuildThreads} ${doTest}
+    ${thisDir}/kk2ups_build_one_version ${cmakever} "${rootVer} -q${plusProfRootQuals}" ${buildDirProf} ${nBuildThreads} ${doTest}
     if [[ "$?" != "0" ]]; then
        exit 4
     fi
   fi
   if [[ -n "${doDebug}" ]]; then
-    ${thisDir}/build_one_version ${cmakever} "${rootVer} -q${plusDebugRootQuals}" ${buildDirDebug} ${nBuildThreads} ${doTest}
+    ${thisDir}/kk2ups_build_one_version ${cmakever} "${rootVer} -q${plusDebugRootQuals}" ${buildDirDebug} ${nBuildThreads} ${doTest}
     if [[ "$?" != "0" ]]; then
        exit 5
     fi
