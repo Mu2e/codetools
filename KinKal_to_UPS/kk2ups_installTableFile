@@ -1,0 +1,127 @@
+#! /bin/bash
+#
+# Create the table file in the products directory
+# This create entries for both the prof and debug versions.
+#
+# Arguments:
+#  1 - Package name
+#  2 - path to the table file.
+#  3 - root version
+#  4 - root qualifier string ( either prof or debug is OK; the code will parse it)
+#
+# This script overwrites previously existing installs of the table file.
+#
+# Fixme:
+# 1) distinguish the root qualifier string from the KinKal qualifier string
+# 2) support additional qualifiers on KinKal
+# 3) There is are repeated qualifier gymnastics here and in build.  Minimize the repetition.
+#
+
+# Define separate qualifier strings for both the prof and debug builds.
+# The base of the qualifier strings is the qualifier string for root.
+# Define 3 variants:
+#    - colon separated fields
+#    - colon separated fields with leading plus signs
+#    - dot separated fields
+setQualifiers(){
+
+  # Key on the root qualfiers.
+  echo ${rootQuals} | grep -q prof
+  if [[ "$?" == "0" ]]; then
+     profRootQuals=${rootQuals}
+     debugRootQuals=`echo ${rootQuals} | sed 's/prof/debug/' | sed 's/:/ /g' | tr " " "\n" | sort | tr "\n" " " | xargs | tr " " ":"`
+     profColonQuals=${rootQuals}
+     debugColonQuals=`echo ${profColonQuals} | sed 's/prof/debug/' | sed 's/:/ /g' | tr " " "\n" | sort | tr "\n" " " | xargs | tr " " ":"`
+  else
+    echo ${rootQuals} | grep -q debug
+    if [[ "$?" == "0" ]]; then
+      debugRootQuals=${rootQuals}
+      profRootQuals=`echo ${rootQuals} | sed 's/debug/prof/' | sed 's/:/ /g' | tr " " "\n" | sort | tr "\n" " " | xargs | tr " " ":"`
+      debugColonQuals=${rootQuals}
+      profColonQuals=`echo ${debugColonQuals} | sed 's/debug/prof/' | sed 's/:/ /g' | tr " " "\n" | sort | tr "\n" " " | xargs | tr " " ":"`
+    else
+      # Expect one of prof or debug
+      echo "Expected root to have either a prof or a debug qualifier"
+      return 1
+    fi
+  fi
+
+  # Qualifier string with plus signs, needed for the required setup.
+  plusProfRootQuals=`echo "+"${profRootQuals} | sed 's/:/:+/g'`
+  plusDebugRootQuals=`echo "+"${debugRootQuals} | sed 's/:/:+/g'`
+
+  # Qualifier strings with colons replaced by dots, needed for the _FQ environment variable
+  # and other environment variables that include it.
+  debugDotQuals=`echo ${debugColonQuals} | sed 's/:/./g'`
+  profDotQuals=`echo ${profColonQuals} | sed 's/:/./g'`
+
+  return 0
+}
+
+#--- main ---
+
+# Arguments
+package_name=$1
+destination_file=$2
+rootVer=$3
+rootQuals=$4
+
+# Define they myriad variants of the qualifiers.
+setQualifiers
+if [[ "$?" != "0" ]]; then
+  exit 1
+fi
+
+# Write the table file in place
+cat > ${destination_file} <<EOF
+File    = table
+Product = ${package_name}
+
+#*************************************************
+# Starting Group definition
+Group:
+
+Flavor     = ANY
+Qualifiers = "${debugColonQuals}"
+
+  Action = GetFQDir
+      envSet( \${UPS_PROD_NAME_UC}_FS, "" )
+      execute( "get-directory-name subdir", NO_UPS_ENV, \${UPS_PROD_NAME_UC}_FS )
+      envSet (KINKAL_FQ, \${\${UPS_PROD_NAME_UC}_FS}.${debugDotQuals})
+      setupRequired( root  ${rootVer} -q ${plusDebugRootQuals})
+
+Flavor     = ANY
+Qualifiers = "${profColonQuals}"
+
+  Action = GetFQDir
+      envSet( \${UPS_PROD_NAME_UC}_FS, "" )
+      execute( "get-directory-name subdir", NO_UPS_ENV, \${UPS_PROD_NAME_UC}_FS )
+      envSet (KINKAL_FQ, \${\${UPS_PROD_NAME_UC}_FS}.${profDotQuals})
+      setupRequired( root  ${rootVer} -q ${plusProfRootQuals})
+
+Common:
+  Action = setup
+    prodDir()
+    setupEnv()
+    setupRequired(cetpkgsupport)
+
+    envSet (KINKAL_INC, \${KINKAL_DIR}/include )
+    pathPrepend(ROOT_INCLUDE_PATH, \${KINKAL_DIR}/include)
+    pathPrepend(ROOT_INCLUDE_PATH, \${KINKAL_DIR}/include/KinKal/General)
+    pathPrepend(ROOT_INCLUDE_PATH, \${KINKAL_DIR}/include/KinKal/Trajectory)
+    pathPrepend(ROOT_INCLUDE_PATH, \${KINKAL_DIR}/include/KinKal/Examples)
+
+    exeActionRequired(GetFQDir)
+    envSet (KINKAL_LIB, \${KINKAL_DIR}/\${KINKAL_FQ}/lib )
+    envSet (KINKAL_VERSION, \${UPS_PROD_VERSION} )
+
+    if ( test \`uname\` = "Darwin" )
+      pathPrepend(DYLD_LIBRARY_PATH, \${\${UPS_PROD_NAME_UC}_LIB})
+    else()
+      pathPrepend(LD_LIBRARY_PATH, \${\${UPS_PROD_NAME_UC}_LIB})
+    endif ( test \`uname\` = "Darwin" )
+
+End:
+# End Group definition
+#*************************************************
+EOF
