@@ -20,8 +20,8 @@ and you already have a UPS **debug** version of root set up in the environment. 
 the following:
 
 * git clone https://github.com/Mu2e/KinKal_to_UPS.git
-* KinKal_to_UPS/build -h  # to see the help
-* KinKal_to_UPS/build -v <git_tag_name> -i
+* KinKal_to_UPS/kk2ups -h  # to see the help
+* KinKal_to_UPS/kk2ups -v <git_tag_name> -i
 
 This will look for the source in the subdirectory KinKal and for the built debug version in
 the subdirectory build_debug.  It will install the already built git tag and into the default UPS
@@ -51,7 +51,7 @@ Start in a clean working directory with no UPS version of root or cmake already 
 
 * git clone https://github.com/Mu2e/KinKal_to_UPS.git
 * setup mu2e
-* KinKal_to_UPS/build -v "v0.1.1" -n -b -t -i -z -c "v3_18_2" -r "v6_20_08a -q+e20:+p383b:+prof" -j 24   -d ${PWD}/artexternals
+* KinKal_to_UPS/kk2ups -v "v0.1.1" -n -b -t -i -z -c "v3_18_2" -r "v6_20_08a -q+e20:+p383b:+prof" -j 24   -d ${PWD}/artexternals
 
 This will do the following
 * For the requested git tag of KinKal this will clone, checkout, cmake, make, make tests, install into UPS, and make tar files for installation on cvmfs.

@@ -145,7 +145,7 @@ rsync -ar --exclude-from  ${KINKAL_TO_UPS_DIR}/exclude_for_include.txt \
     ${package_source} ${proddir}/include
 
 # UPS table file
-${KINKAL_TO_UPS_DIR}/installTableFile ${package_name} ${upsdir}/${package_name}.table ${rootVer} ${rootQuals}
+${KINKAL_TO_UPS_DIR}/kk2ups_installTableFile ${package_name} ${upsdir}/${package_name}.table ${rootVer} ${rootQuals}
 
 # Libaries and executable binaries
 rsync -ar ${build_path}/bin ${bindir}
