@@ -48,7 +48,7 @@ install() {
      > $DD/ups/codetools.table
 
   # install scripts
-  cp -r $SOURCEDIR/bin $SOURCEDIR/clangtools_utilities $DD
+  cp -r $SOURCEDIR/bin $SOURCEDIR/clangtools_utilities $SOURCEDIR/KinKal_to_UPS $DD
   RC=$?
   if [ $RC -ne 0 ]; then
     echo "ERROR - failed to cp scripts from  $SOURCEDIR to $DD"
