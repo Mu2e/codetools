@@ -17,6 +17,7 @@ Common:
 
     # add the bin directory to the path
     pathPrepend(PATH, ${UPS_PROD_DIR}/bin )
+    pathPrepend(PATH, ${UPS_PROD_DIR}/KinKal_to_UPS )
 
 End:
 # End Group definition

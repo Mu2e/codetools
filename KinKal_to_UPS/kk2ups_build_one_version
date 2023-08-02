@@ -1,0 +1,70 @@
+#! /bin/bash
+#
+# Helper script for KinKal_build  - build either prof or debug
+#
+# This is a separate script, not a bash function so that it will
+# run in a sub-shell and not modify the environment of its parent shell.
+#
+# Arguments
+# cmakever             = version + qualifer string for cmake
+# root_for_this_build  = version + qualifier string for root
+# local_build_dir      = directory that will hold the build
+# nbuildthreads        = number of threads to use for make
+# dotest               = if true then do the tests after the build
+
+cmake_ver=$1
+root_for_this_build=$2
+local_build_dir=$3
+nbuildthreads=$4
+dotest=$5
+
+# The convention suggested in the KinKal docs is that
+#  cmake build type Release is built in the directory kinkal_profile
+#  cmake build type Debug is built in the directory kinkal_debug
+cmake_build_type=""
+local_build_suffix=""
+if grep -q "prof"  <<< "$root_for_this_build"; then
+  cmake_build_type="Release"
+  local_build_suffix="profile"
+elif grep -q "debug"  <<< "$root_for_this_build"; then
+  cmake_build_type="Debug"
+  local_build_suffix="debug"
+else
+  echo "Could not understand requested build type derived from the ups ROOT product"
+  echo "The ups root version is: " $root_for_this_build
+  exit 1
+fi
+
+echo " Begin ${local_build_suffix} build "
+
+setup mu2e
+setup cmake ${cmake_ver}
+if [[ "$?" != "0" ]]; then
+  exit 2
+fi
+setup -B root ${root_for_this_build}
+if [[ "$?" != "0" ]]; then
+  exit 3
+fi
+ups active
+
+mkdir -p ${local_build_dir}
+cd ${local_build_dir}
+cmake ../KinKal  -DCMAKE_BUILD_TYPE=${cmake_build_type}
+if [[ "$?" != "0" ]]; then
+  exit 4
+fi
+
+make -j ${nbuildthreads}
+if [[ "$?" != "0" ]]; then
+  exit 5
+fi
+
+if [[ -n "${dotest}" ]]; then
+  make -j ${nbuildthreads} test
+  if [[ "$?" != "0" ]]; then
+    exit 6
+  fi
+fi
+
+exit 0

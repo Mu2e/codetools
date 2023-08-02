@@ -1,0 +1,428 @@
+#! /bin/bash
+#
+# Master script to build and install KinKal.
+#
+
+usage() {
+echo "
+
+Script to build, test, install and cleanup the KinKal UPS product.
+
+usage: build <options>
+
+Option Value          Description
+    -b                build code (optional, default = no )
+    -C                clean up working directories ( optional, default=no)
+    -c                VALUE cmake version and qualifiers ( optional, default=\"v3_26_6\", used only for the build step)
+    -d upsRoot        path to the root of the target UPS directory (required if -i selected)
+    -D buildDirDebug  name of the directory that holds the debug build (default=kinkal_debug)
+    -i                install as a UPS product ( optional, default=no)
+    -j value          maximum number of build threads (optional, default =1)
+    -m setup args     Use muse mode to discover root version; in compatible with -r
+    -n                do a new clone; if absent expect on to be present (optional, default=no)
+    -P buildDirProf   name of the directory that holds the profile build (default=kinkal_profile)
+    -r value          root version and qualifiers (optional, if not specfied it will use UPS active);
+                      incompatible with -m.
+    -s versionSuffix  Quals additional qualifiers to add as a suffix to the UPS version of the product ( optional, default = "" )
+    -t                run the tests (optional, default=no, only works if -b is also specified )
+    -v gitVersion     name of the git tag (required)
+    -V                make this script verbose (optional, default = no )
+    -z                make the a tar.bz2 file(s) (optional, default = no )
+    -h                print this help
+
+For additional details see: https://github.com/Mu2e/KinKal_to_UPS
+"
+}
+
+checkConfiguration(){
+
+  if [[ -n "$doInstall" && -z "$gitVersion" ]]; then
+    echo "ERROR - you must supply a version when requesting an install."
+    return 2
+  fi
+
+  if [[ -n "$doBuild" && -z "$cmakever" ]]; then
+    echo "ERROR - you must supply a cmake version when requesting a build."
+    return 3
+  fi
+
+  if [[ -z "$doBuild" && -z "$doInstall" && -z "$doClean" && -z "$doTar" && -z "$doTest" ]]; then
+    echo "WARNING  - no actions requested; hope that's OK"
+  fi
+
+  return 0
+}
+
+# Gymnastics with root qualifiers to predefine several variants that will be needed.
+processROOTQualifiers(){
+
+  # Fixme: allow this to proceed if the two agree.
+  if [[ -n "${rootCmdLineOption}" && -n "${SETUP_ROOT}" ]]; then
+     echo "Error - root is already setup and a root version is also supplied via the command line.  Pick one."
+     return 1
+  fi
+
+  # If a root version was not specified by command line argument, then see
+  # if there is a root already setup in the environment and use that.
+  if [[ -n "${rootCmdLineOption}" ]]; then
+     rootQuals=`echo ${rootCmdLineOption} | awk '{print $2}' | sed 's/-q//' | sed 's/+//g'`
+     rootVer=`echo ${rootCmdLineOption} | awk '{print $1}' `
+  elif [[ -n "${SETUP_ROOT}" ]]; then
+     rootQuals=`echo ${SETUP_ROOT} | awk '{print $NF}'`
+     rootVer=${ROOT_VERSION}
+     rootCmdLineOption="$ROOT_VERSION -q$rootQuals"
+     echo ${rootQuals} | grep -q prof
+     if [[ "$?" == "0" ]]; then
+       doDebug=""
+     else
+       echo ${rootQuals} | grep -q debug
+       if [[ "$?" == "0" ]]; then
+          doProf=""
+       fi
+     fi
+  else
+     # If we are only cleaning or making tar files then we do not need root
+     if [[ -n "$doBuild" || -n "$doInstall" ]]; then
+       echo "Error - you must either supply the -r option or have an already setup version of ROOT in your shell."
+       return 2
+     fi
+  fi
+
+  # Define both the debug and prof versions of the qualifer strings.
+  echo ${rootQuals} | grep -q prof
+  if [[ "$?" == "0" ]]; then
+     profRootQuals=${rootQuals}
+     debugRootQuals=`echo ${rootQuals} | sed 's/prof/debug/' | sed 's/:/ /g' | tr " " "\n" | sort | tr "\n" " " | xargs | tr " " ":"`
+     profColonQuals=${qualifiers_colons}
+     debugColonQuals=`echo ${profColonQuals} | sed 's/prof/debug/' | sed 's/:/ /g' | tr " " "\n" | sort | tr "\n" " " | xargs | tr " " ":"`
+  else
+    echo ${rootQuals} | grep -q debug
+    if [[ "$?" == "0" ]]; then
+      debugRootQuals=${rootQuals}
+      profRootQuals=`echo ${rootQuals} | sed 's/debug/prof/' | sed 's/:/ /g' | tr " " "\n" | sort | tr "\n" " " | xargs | tr " " ":"`
+      debugColonQuals=${qualifiers_colons}
+      profColonQuals=`echo ${debugColonQuals} | sed 's/debug/prof/' | sed 's/:/ /g' | tr " " "\n" | sort | tr "\n" " " | xargs | tr " " ":"`
+    else
+      # Expect one of prof or debug; if we are only cleaning then we do not need root
+      if [[ -n "$doBuild" || -n "$doInstall" ]]; then
+        echo "Error - Expected root to have either a prof or a debug qualifier"
+        return 3
+      fi
+    fi
+  fi
+
+  # Qualifier string with plus signs, needed to setup root
+  plusProfRootQuals=`echo "+"${profRootQuals} | sed 's/:/:+/g'`
+  plusDebugRootQuals=`echo "+"${debugRootQuals} | sed 's/:/:+/g'`
+
+  return 0
+}
+
+# Fetch the code to be built.  If no version is specified, use the head of the default branch.
+getCode() {
+  if [[ -n "${doClone}" ]]; then
+    echo "Begin clone and checkout for KinKal tag "$gitVersion
+    git clone https://github.com/KFTrack/KinKal.git
+    if [[ "$?" != "0" ]]; then
+     return 1
+    fi
+    cd KinKal
+    if [[ -n "$gitVersion" ]]; then
+      git checkout -b ${gitVersion}_build_branch ${gitVersion}
+      if [[ "$?" != "0" ]]; then
+         return 2
+      fi
+    fi
+    cd ..
+  else
+    echo "Using existing clone of KinKal: "
+  fi # End test on doClone defined
+
+  # Report the commit to be  built
+  if [[ -d KinKal ]]; then
+    cd KinKal
+    git log -n 1 --decorate=full | cat  # Need the pipe cat or it may pipe to less
+    git status
+    cd ..
+  else
+    echo "Error - The directory KinKal does not exist. "
+    return 3
+  fi
+
+  return 0
+}
+
+clean(){
+  echo "Begin clean up. "
+  for dir in ${buildDirProf} ${buildDirDebug}; do
+    if [[ -d ${dir} ]]; then
+      echo "Removing " ${dir}
+      /bin/rm -rf ${dir}
+    fi
+  done
+}
+
+
+install() {
+  echo "Begin install."
+
+  retval=0
+
+  if [[ -n ${doProf} ]]; then
+    if [[ -d ${buildDirProf} ]]; then
+      echo "Begin install of prof version."
+      ${thisDir}/kk2ups_install ${gitVersion} ${upsRoot} ${rootVer} ${profRootQuals} ${buildDirProf} ${versionSuffix}
+    else
+      echo "ERROR - requested to install " ${buildDirProf} " but this directory does not exist."
+      retval=1
+    fi
+  fi
+
+  if [[ -n ${doDebug} ]]; then
+    if [[ -d ${buildDirDebug} ]]; then
+      echo "Begin install of debug version."
+      ${thisDir}/kk2ups_install ${gitVersion} ${upsRoot} ${rootVer} ${debugRootQuals} ${buildDirDebug} ${versionSuffix}
+    else
+      echo "ERROR - requested to install " ${buildDirDebug} " but this directory does not exist."
+      retval=1
+    fi
+  fi
+
+  return ${retval}
+}
+
+makeTarFiles() {
+  echo "Begin making tar files."
+
+  setUPSVersion
+  echo "Version is: " $ups_style_version  "  " $ups_style_version
+
+  if [[ -d artexternals/KinKal/${ups_style_version} ]]; then
+    if [[ -n "$doProf" ]]; then
+      echo "Begin making tar file for prof version."
+      tar cjf KinKal_prof.tar.bz2 --exclude="*debug*" -C artexternals KinKal/${ups_style_version} KinKal/${ups_style_version}.version
+    fi
+
+    if [[ -n "$doDebug" ]]; then
+      echo "Begin making tar file for debug version."
+      tar cjf KinKal_debug.tar.bz2 --exclude="*prof*" -C artexternals KinKal/${ups_style_version} KinKal/${ups_style_version}.version
+    fi
+  else
+    echo "ERROR - could not find the ups product to tar: " artexternals/KinKal/${ups_style_version}
+    return 1
+  fi
+
+  return 0
+}
+
+# Discover the version of root that will be setup by
+# the envset specified by the -m argument
+# The argument may be an empty string to select the
+# default muse behaviour.
+discoverRootFromMuse(){
+
+  # Check for consistent arguments.
+  if [[ -n "$rootCmdLineOption" ]]; then
+    echo "ERROR - you must not supply both -m and -r."
+    exit 9
+  fi
+
+  if [[ -z "${SETUP_MUSE}" ]]; then
+    echo "ERROR - Muse must be setup in your environment to use the -m option."
+    exit 10
+  fi
+
+  export -f muse
+  tmp=`${thisDir}/kk2ups_discover_root_ver ${museArgs} `
+  rval=$?
+  if [[ "${rval}" != "0" ]]; then
+    echo ${tmp}
+    exit "${rval}"
+  fi
+  rootCmdLineOption="${tmp}"
+
+  if [[ -n "$KinKal_Installer_Verbose" ]]; then
+    echo "Root version discovered from muse: " ${rootCmdLineOption}
+  fi
+  unset tmp
+}
+
+
+# ********** main **********
+
+productName=KinKal
+
+# The directory that contains this script (and others that it will run).
+thisDir=`dirname $(readlink -f $0)`
+
+source ${thisDir}/funcs
+
+# Default values for command line argument options
+cmakever="v3_26_4"
+doClone=""
+doBuild=""
+doClean=""
+doInstall=""
+doTar=""
+doTest=""
+gitVersion=""
+nBuildThreads="1"
+useMuse=""
+museArgs=""
+upsRoot="${PWD}/artexternals"
+buildDirProf="kinkal_profile"
+buildDirDebug="kinkal_debug"
+rootCmdLineOption=""
+versionSuffix=""
+
+
+export KinKal_Installer_Verbose=""
+
+while getopts abCc:d:D:ij:m:nP:r:s:tv:Vzh OPT; do
+    case $OPT in
+        b)
+            doBuild=true
+            ;;
+        C)  doClean=true
+            ;;
+        c)  cmakever=$OPTARG
+            ;;
+        d)
+            upsRoot=$OPTARG
+            ;;
+        D)
+            buildDirDebug=$OPTARG
+            ;;
+        i)
+            doInstall=true
+            ;;
+        j)  nBuildThreads=$OPTARG
+            ;;
+        m)  useMuse=true
+            museArgs=$OPTARG
+            ;;
+        n)  doClone=true
+            ;;
+        P)
+            buildDirProf=$OPTARG
+            ;;
+        r)  rootCmdLineOption=$OPTARG
+            ;;
+        s)
+            versionSuffix=$OPTARG
+            ;;
+        t)  doTest="true"
+            ;;
+        v)
+            gitVersion=$OPTARG
+            ;;
+        V)
+            KinKal_Installer_Verbose="true"
+            ;;
+        z)
+            doTar="true"
+            ;;
+        h)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Error - unknown option, exiting"
+	    usage
+            exit 1
+            ;;
+     esac
+done
+
+# Control build and install of both prof/debug or just one of them.
+# One of these is disabled if a version of root is found in the environment.
+doProf="true"
+doDebug="true"
+
+if [[ -n "$useMuse" ]]; then
+
+  export -f muse
+  discoverRootFromMuse
+  if [[ "$?" != "0" ]]; then
+    exit 11
+  fi
+fi
+
+
+processROOTQualifiers
+if [[ "$?" != "0" ]]; then
+  exit 1
+fi
+
+if [[ -n "$KinKal_Installer_Verbose" ]]; then
+  echo "Parsed command line arguments: "
+  echo "productName:       " ${productName}
+  echo "thisDir:           " ${thisDir}
+  echo "doClone:           " ${doClone}
+  echo "doBuild:           " ${doBuild}
+  echo "doClean:           " ${doClean}
+  echo "cmakever:          " ${cmakever}
+  echo "doInstall:         " ${doInstall}
+  echo "upsRoot:           " ${upsRoot}
+  echo "buildDirProf:      " ${buildDirProf}
+  echo "buildDirDebug:     " ${buildDirDebug}
+  echo "rootCmdLineOption: " ${rootCmdLineOption}
+  echo "doTest:            " ${doTest}
+  echo "gitVersion:        " ${gitVersion}
+  echo "nBuildThreads:     " ${nBuildThreads}
+  echo "useMuse:           " ${useMuse}
+  echo "museArgs:          " ${museArgs}
+  echo " "
+  echo "Resolved root information:"
+  echo "Root version:            " ${rootVer}
+  echo "Root qualifiers (prof):  " ${profRootQuals}
+  echo "Root qualifiers (debug): " ${debugRootQuals}
+  echo " "
+  echo "Other:"
+  echo "Prof enabled:            " ${doProf}
+  echo "Debug enabled:           " ${doDebug}
+fi
+
+if ! checkConfiguration ; then
+  usage
+  exit 2
+fi
+
+if [ -n "$doBuild" ]; then
+  if ! getCode ; then
+    exit 3
+  fi
+  if [[ -n "${doProf}" ]]; then
+    ${thisDir}/kk2ups_build_one_version ${cmakever} "${rootVer} -q${plusProfRootQuals}" ${buildDirProf} ${nBuildThreads} ${doTest}
+    if [[ "$?" != "0" ]]; then
+       exit 4
+    fi
+  fi
+  if [[ -n "${doDebug}" ]]; then
+    ${thisDir}/kk2ups_build_one_version ${cmakever} "${rootVer} -q${plusDebugRootQuals}" ${buildDirDebug} ${nBuildThreads} ${doTest}
+    if [[ "$?" != "0" ]]; then
+       exit 5
+    fi
+  fi
+fi
+
+if [ -n "$doInstall" ]; then
+  if ! install ; then
+    exit 6
+  fi
+fi
+
+if [ -n "$doTar" ]; then
+  if ! makeTarFiles ; then
+    exit 7
+  fi
+fi
+
+if [ -n "$doClean" ]; then
+  if ! clean ; then
+    exit 8
+  fi
+fi
+
+echo "KinKal_to_UPS/build completed with status 0"
+exit 0

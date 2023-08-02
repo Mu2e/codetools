@@ -1,0 +1,17 @@
+#
+# Convert the git tag into UPS version number style
+#    Examples: v0.1.1   to v00_01_01
+#              v0.100.1 to v00_100_01
+# Note: awk printf will expand field width to support numbers larger than 99.
+# Fixme: add more error checking and support other style tags, for example
+#        a suffix after the version number?
+#
+setUPSVersion() {
+  nn=`echo $gitVersion | awk 'BEGIN{FS="."} { print NF }'`
+  if [ "${nn}" != "3" ]; then
+     echo "Git version is not in a supported style: " ${gitVersion}
+     return 1
+  fi
+  ups_style_version=`echo $gitVersion | sed 's/v//' | awk 'BEGIN{FS="."} { printf ( "v%02d_%02d_%02d\n", $1, $2, $3) }'`"$versionSuffix"
+  return 0
+}

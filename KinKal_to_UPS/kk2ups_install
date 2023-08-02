@@ -1,0 +1,199 @@
+#! /bin/bash
+#
+# Copy files from the source and build areas to create a UPS product.
+#
+# Arguments:
+#  1 - The git style version number
+#  2 - root of the UPS repo into which the product will be installed
+#  3 - The version of root on which this depends
+#  4 - The qualifier string for the root version
+#  5 - The path to the directory that contains the libs and bins to be installed.
+#  6 - Optional.  Suffix to append to the UPS style vesion number.
+#
+# This script unconditionally deletes previously existing installs of the
+# same product+version+qualifiers: use with care.
+#
+# The UPS qualifiers of the new product will be those of the version of
+# root on which it depends.
+#
+# Fixme: add support for additional qualifiers
+
+# Create the UPS qualifiers for the prof and debug versions
+#  - 3 versions, needed for different places in UPSology
+#       - colon separated
+#       - dot separated
+#       - underscore separated
+setQualifiers(){
+  # Sort qualifiers by alphabetical order; xargs is used to strip trailing whitespace
+  qualifiers_colons=`echo $rootQuals | sed 's/:/ /g' | tr " " "\n" | sort | tr "\n" " " | xargs | tr " " ":"`
+  qualifiers_dots=`echo $qualifiers_colons | sed 's/:/./g'`
+  qualifiers_underscores=`echo $qualifiers_colons | sed 's/:/_/g'`
+  return 0
+}
+
+#--- main ---
+
+gitVersion=$1
+upsRoot=$2
+rootVer=$3
+rootQuals=$4
+build_path=$5
+versionSuffix=$6
+
+package_name=KinKal
+package_source=${PWD}/${package_name}
+
+# The directory that contains this script.
+thisDir=`dirname $(readlink -f $0)`
+
+# Define some shell functions.
+source ${thisDir}/funcs
+
+setUPSVersion
+if [[ "$?" != 0 ]]; then
+    echo "ERROR - Could not convert the git tag to a UPS version number. The git tag was: " ${gitVersion}
+    exit 1
+fi
+
+setQualifiers
+if [[ "$?" != 0 ]]; then
+    echo "ERROR - setQualifiers failed: "
+    exit 2
+fi
+
+# Where to find the files in the installer package
+KINKAL_TO_UPS_DIR=`dirname $(readlink -f $0)`
+
+# Where to find example .upsfiles and .updfiles.
+exampleExternals="/cvmfs/mu2e.opensciencegrid.org/artexternals/"
+
+# Intialize UPS repo if needed.
+if ! [ -e ${upsRoot} ]; then
+  mkdir ${upsRoot}
+  cp -r ${exampleExternals}/.upsfiles ${upsRoot}
+  cp -r ${exampleExternals}/.updfiles ${upsRoot}
+fi
+
+if ! [ -d ${upsRoot}/.upsfiles ]; then
+  cp -r ${exampleExternals}/.upsfiles ${upsRoot}
+fi
+
+if ! [ -d ${upsRoot}/.updfiles ]; then
+  cp -r ${exampleExternals}/.updfiles ${upsRoot}
+fi
+
+
+# Need this for get-directory-name
+setup cetpkgsupport
+
+
+# There are two representations of operating system UPS flavor:
+#   old style, for example: Linux64bit+2.6-2.12_e7
+#   new style, for example: slf6.x86_64
+# We need them both.
+old_flavour=`ups flavor -4`
+new_flavour=`get-directory-name subdir`
+
+# Build the names of the directories into which we will write things
+fq=${new_flavour}.${qualifiers_dots}
+topdir=${upsRoot}/${package_name}
+proddir=${upsRoot}/${package_name}/${ups_style_version}
+verdir=${upsRoot}/${package_name}/${ups_style_version}.version
+bindir=${upsRoot}/${package_name}/${ups_style_version}/${fq}
+incdir=${upsRoot}/${package_name}/${ups_style_version}/include
+upsdir=${upsRoot}/${package_name}/${ups_style_version}/ups
+
+# I am not sure what this file is properly called.
+# I am calling it the fqfile, which is short for flavor qualifier file.
+fqfile=${verdir}/${old_flavour}_${qualifiers_underscores}
+
+# Make directories, if needed.
+if ! [ -e ${topdir} ];then
+  mkdir ${topdir}
+fi
+
+if ! [ -e ${proddir} ];then
+  mkdir ${proddir}
+fi
+
+if ! [ -e ${verdir} ];then
+  mkdir ${verdir}
+fi
+
+# Remove all content that we will recreate.
+# Create required directories.
+if [ -e ${bindir} ];then
+  /bin/rm -rf ${bindir}
+fi
+mkdir ${bindir}
+
+if [ -e ${incdir} ];then
+  /bin/rm -rf ${incdir}
+fi
+mkdir ${incdir}
+
+if [ -e ${upsdir} ];then
+  /bin/rm -rf ${upsdir}
+fi
+mkdir ${upsdir}
+
+if [ -e ${fqfile} ];then
+  /bin/rm -rf ${fqfile}
+fi
+
+# Copy the required parts of the source directory to the installation area:
+
+# Header files:
+rsync -ar --exclude-from  ${KINKAL_TO_UPS_DIR}/exclude_for_include.txt \
+    ${package_source} ${proddir}/include
+
+# UPS table file
+${KINKAL_TO_UPS_DIR}/kk2ups_installTableFile ${package_name} ${upsdir}/${package_name}.table ${rootVer} ${rootQuals}
+
+# Libaries and executable binaries
+rsync -ar ${build_path}/bin ${bindir}
+if [[ "$?" != 0 ]]; then
+    echo "ERROR - could not copy the bin directory: "
+    exit 3
+fi
+rsync -ar ${build_path}/lib ${bindir}
+if [[ "$?" != 0 ]]; then
+    echo "ERROR - could not copy the lib directory: "
+    exit 4
+fi
+
+# A copy of the full source
+rsync -ar --exclude-from  ${KINKAL_TO_UPS_DIR}/exclude_for_source.txt \
+  ${package_source} ${proddir}/source
+
+# Create the ups fq file.
+cat > ${fqfile} <<EOF
+FILE = version
+PRODUCT = ${package_name}
+VERSION = ${ups_style_version}
+
+#*************************************************
+#
+FLAVOR = ${old_flavour}
+QUALIFIERS = "${qualifiers_colons}"
+  DECLARER = `whoami`
+  DECLARED = `date +"%Y-%m-%d %H:%M:%S GMT" -u`
+  MODIFIER = `whoami`
+  MODIFIED = `date +"%Y-%m-%d %H:%M:%S GMT" -u`
+  PROD_DIR = ${package_name}/${ups_style_version}
+  UPS_DIR = ups
+  TABLE_FILE = ${package_name}.table
+
+EOF
+
+unset old_flavour
+unset new_flavour
+unset fq
+unset topdir
+unset proddir
+unset verdir
+unset bindir
+unset incdir
+unset upsdir
+unset fqfile
+unset exampleExternals

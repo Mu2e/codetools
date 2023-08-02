@@ -1,0 +1,12 @@
+.git
+.gitignore
+*.cc
+*~
+*.sh
+*.old
+*.sav
+.clang-format
+.clang-tidy
+.travis.yml
+CMakeLists.txt
+README.md
