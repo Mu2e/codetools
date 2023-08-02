@@ -64,19 +64,22 @@ fi
 # Where to find the files in the installer package
 KINKAL_TO_UPS_DIR=`dirname $(readlink -f $0)`
 
+# Where to find example .upsfiles and .updfiles.
+exampleExternals="/cvmfs/mu2e.opensciencegrid.org/artexternals/"
+
 # Intialize UPS repo if needed.
 if ! [ -e ${upsRoot} ]; then
   mkdir ${upsRoot}
-  cp -r ${KINKAL_TO_UPS_DIR}/.upsfiles ${upsRoot}
-  cp -r ${KINKAL_TO_UPS_DIR}/.updfiles ${upsRoot}
+  cp -r ${exampleExternals}/.upsfiles ${upsRoot}
+  cp -r ${exampleExternals}/.updfiles ${upsRoot}
 fi
 
 if ! [ -d ${upsRoot}/.upsfiles ]; then
-  cp -r ${KINKAL_TO_UPS_DIR}/.upsfiles ${upsRoot}
+  cp -r ${exampleExternals}/.upsfiles ${upsRoot}
 fi
 
 if ! [ -d ${upsRoot}/.updfiles ]; then
-  cp -r ${KINKAL_TO_UPS_DIR}/.updfiles ${upsRoot}
+  cp -r ${exampleExternals}/.updfiles ${upsRoot}
 fi
 
 
@@ -193,3 +196,4 @@ unset bindir
 unset incdir
 unset upsdir
 unset fqfile
+unset exampleExternals
