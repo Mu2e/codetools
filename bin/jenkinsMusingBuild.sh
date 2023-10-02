@@ -84,7 +84,7 @@ if [ $NMATCHES -gt 1 ]; then
 fi
 
 DEPS=$( cat MuseConfig/musing/$MUSING | sed 's/#.*$//' |
-    awk -v t=$VERSION '{if($1==t) { for(i=2;i<=NR; i++) print $i " "} }' )
+    awk -v t=$VERSION '{if($1==t) { for(i=2;i<=NF; i++) printf "%s ", $i } }' )
 
 
 echo "[$(date)] found dependecies $DEPS"
