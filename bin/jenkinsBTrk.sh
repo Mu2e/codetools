@@ -17,9 +17,10 @@ echo "[`date`] start $PACKAGE_VERSION $COMPILER $BUILDTYPE $OS"
 echo "[`date`] PWD"
 pwd
 echo "[`date`] directories"
-rm -rf BTrk build prod
+rm -rf BTrk build prod copyBack
 mkdir -p build
 mkdir -p prod
+mkdir -p copyBack
 export LOCAL_DIR=$PWD
 
 echo "[`date`] ls of local dir"
