@@ -48,7 +48,7 @@ DOTV=$(echo $PACKAGE_VERSION | tr -d v | tr _ . )
 
 echo "[$(date)] pip install $DOTV"
 
-pip install scons==$DOTV --target=$PWD
+pip install --progress-bar off scons==$DOTV --target=$PWD
 RC=$?
 if [ $RC -ne 0 ]; then
     echo "error - pip install failed with RC=$C"
