@@ -58,6 +58,13 @@ getCode() {
 
     git clone https://github.com/Mu2e/Production  || return 1
 
+    echo "[$(date)] show hashes"
+    git -C Offline show -1
+    git -C Production show -1
+
+    echo "[$(date)] ls of build area"
+    ls -l
+    ls -l *
 
     return 0
 
@@ -101,6 +108,7 @@ buildBranch() {
     fi
 
     muse status
+    ups active
 
     #local SHORT=$MUSE_BUILD_BASE/Offline/lib/libmu2e_Validation_root.so
     #muse build -j 20 --mu2eCompactPrint  $SHORT >& build.log
@@ -125,6 +133,10 @@ buildBranch() {
     cp build.log $MUSE_BUILD_BASE/Offline/gen/txt/build.txt
     ls -al $MUSE_BUILD_BASE/Offline/gen/txt
     cp build.log copyBack/build_${BUILD}.log
+
+    echo "[$(date)] ls of build area"
+    ls -l
+    ls -l *
 
     return 0
 }
