@@ -191,7 +191,7 @@ else
 
         # make sure clang tools can find the compdb
         # in an obvious location
-        cp build/*/compilation_db.json ./compile_commands.json
+        cp build/*/compile_commands.json .
 
         ls -l
         echo CT_FILES=${CT_FILES}
