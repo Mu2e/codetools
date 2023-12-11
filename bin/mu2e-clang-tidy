@@ -143,7 +143,7 @@ def main():
   parser.add_argument('-checks', default=None,
                       help='checks filter, when not specified, use clang-tidy '
                       'default')
-  parser.add_argument('-header-filter', default='(?! /cvmfs)',
+  parser.add_argument('-header-filter', default='Offline/.*',
                       help='regular expression matching the names of the '
                       'headers to output diagnostics from. Diagnostics from '
                       'the main file of each translation unit are always '
