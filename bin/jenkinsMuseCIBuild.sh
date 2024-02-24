@@ -57,10 +57,12 @@ getCode() {
     [ $? -ne 0 ] && return 4
 
     git clone https://github.com/Mu2e/Production  || return 1
+    git clone https://github.com/Mu2e/mu2e_trig_config  || return 1
 
     echo "[$(date)] show hashes"
     git -C Offline show -1
     git -C Production show -1
+    git -C mu2e_trig_config show -1
 
     echo "[$(date)] ls of build area"
     ls -l
