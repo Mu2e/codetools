@@ -3,7 +3,6 @@
 # Setup the Mu2e environment; this script does not setup
 # any release of the Mu2e software.
 #
-# This file is sourced directly or as part of "setup mu2e"
 #
 
 # where mu2e-managed products are (artexternals)
@@ -11,6 +10,15 @@ export MU2E=/cvmfs/mu2e.opensciencegrid.org
 
 # magnetic field maps, data files for tests etc.
 export MU2E_DATA_PATH=${MU2E}/DataFiles
+
+OSID=$( source /etc/os-release 2> /dev/null ; echo $ID )
+if [ "$OSID" == "scientific" ]; then
+    OSNAME="sl7"
+elif [ "$OSID" == "almalinux" ]; then
+    OSNAME="al9"
+    export UPS_OVERRIDE="-H Linux64bit+5.14-2.34-al9-3"
+    export MU2E_SPACK=true
+fi
 
 # always redefine ups to point to artexternals version for consistency
 source ${MU2E}/artexternals/setup
@@ -23,11 +31,30 @@ export PRODUCTS=`dropit -p $PRODUCTS -sf /cvmfs/mu2e.opensciencegrid.org/artexte
 export -f setup
 export -f unsetup
 
+# this is separate from above so that it can be set by the user on sl7
+if [ "$MU2E_SPACK" ]; then
+    source /cvmfs/mu2e.opensciencegrid.org/packages/setup-env.sh
+    if [ "$(spack arch | grep almalinux)" ]; then
+	spack load git/q3orrja
+    else
+	spack load git/wzyi4om
+    fi
+    export METACAT_SERVER_URL="https://metacat.fnal.gov:9443/mu2e_meta_prod/app"
+    export METACAT_AUTH_SERVER_URL="https://metacat.fnal.gov:8143/auth/mu2e"
+    export DATA_DISPATCHER_URL="https://metacat.fnal.gov:9443/mu2e_dd_prod/data"
+    export DATA_DISPATCHER_AUTH_URL="https://metacat.fnal.gov:8143/auth/mu2e"
+    export RUCIO_HOME="/cvmfs/mu2e.opensciencegrid.org/DataFiles/DataHandling"
+    if [ "$GRID_USER" ]; then
+        export RUCIO_ACCOUNT="$GRID_USER"
+    else
+        export RUCIO_ACCOUNT="$USER"
+    fi
+else
+    setup git
+fi
+
 # add some Mu2e utility commands
 export PATH=`dropit -p $PATH -sf /cvmfs/mu2e.opensciencegrid.org/bin`
-
-# force use of the current default UPS git
-setup git
 
 # setup Muse for convenience
 setup muse
@@ -47,4 +74,3 @@ export JOBSUB_GROUP=mu2e
 
 # make sure the default man paths are included (path starts with ":")
 [ "${MANPATH:0:1}" != ":" ] && export MANPATH=":"$MANPATH
-
