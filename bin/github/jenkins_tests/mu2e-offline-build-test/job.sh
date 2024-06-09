@@ -40,8 +40,8 @@ setup_cmsbot
 echo "[$(date)] setup ${REPOSITORY}"
 setup_build_repos "${REPOSITORY}"
 # need the following to get access to $MUSE_ENVSET_DIR, used in the whitespace check
-source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
-setup mu2e
+
+source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
 echo "[$(date)] muse envset dir: ${MUSE_ENVSET_DIR}"
 
 cd "$WORKSPACE/$REPO" || exit 1
@@ -189,20 +189,28 @@ else
         cd $WORKSPACE || exit 1;
         set --
 
-        # make sure clang tools can find the compdb
-        # in an obvious location
-        cp build/*/compile_commands.json .
+        if [ "$MU2E_SPACK" ]; then
 
-        ls -l
-        echo CT_FILES=${CT_FILES}
+            if ! command -v clang-tidy >/dev/null ; then
+                spack load llvm/ztl5ab2 || exit 1
+            fi
+            run-clang-tidy -p $MUSE_BUILD_DIR ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
 
-        source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
-        setup mu2e
-        setup clang v14_0_6c
+        else
+            # make sure clang tools can find the compdb
+            # in an obvious location
+            cp build/*/compile_commands.json .
 
-        # run clang-tidy
-        CLANG_TIDY_ARGS="-extra-arg=-isystem$CLANG_FQ_DIR/include/c++/v1  -extra-arg=-isystem$CLANG_FQ_DIR/include/x86_64-unknown-linux-gnu/c++/v1 -p . -j 24"
-        run-clang-tidy ${CLANG_TIDY_ARGS} ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
+            ls -l
+            echo CT_FILES=${CT_FILES}
+
+            source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+            setup clang v14_0_6c
+
+            # run clang-tidy
+            CLANG_TIDY_ARGS="-extra-arg=-isystem$CLANG_FQ_DIR/include/c++/v1  -extra-arg=-isystem$CLANG_FQ_DIR/include/x86_64-unknown-linux-gnu/c++/v1 -p . -j 24"
+            run-clang-tidy ${CLANG_TIDY_ARGS} ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
+        fi
     )
 
     if [ $? -ne 1 ]; then
