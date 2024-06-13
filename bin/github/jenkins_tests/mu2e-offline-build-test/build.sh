@@ -19,6 +19,9 @@ function do_setupstep() {
     # building prof or debug
     muse setup -q $BUILDTYPE
 
+    echo "[$(date)] MUSE_BUILD_DIR:         "  ${MUSE_BUILD_DIR}
+    echo "[$(date)] MUSE_BUILD_BASE:         "  ${MUSE_BUILD_BASE}
+
     return 0
 }
 
