@@ -191,9 +191,12 @@ else
 
         if [ "$MU2E_SPACK" ]; then
 
-            if ! command -v clang-tidy >/dev/null ; then
-                spack load llvm/ztl5ab2 || exit 1
-            fi
+            #if ! command -v clang-tidy >/dev/null ; then
+            #    spack load llvm/ztl5ab2 || exit 1
+            #fi
+            echo "[$(date)] testing for clang tidy: " `command -v clang-tidy`
+            echo "[$(date)] MUSE_BUILD_DIR:         "  ${MUSE_BUILD_DIR}
+            echo "[$(date)] CT_FILES:               "  ${CT_FILES}
             run-clang-tidy -p $MUSE_BUILD_DIR ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
 
         else
