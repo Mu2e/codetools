@@ -96,7 +96,7 @@ function setup_cmsbot() {
     if [ ! -d ${CMS_BOT_DIR} ]; then
         (
             cd "$WORKSPACE"
-            git clone git@github.com:Mu2e/CI
+            git clone https://github.com/Mu2e/CI
         )
     else
         (
