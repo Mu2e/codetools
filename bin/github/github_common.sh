@@ -46,7 +46,7 @@ function prepare_repositories() {
                 if [ ! -d "$WORKSPACE/$REPO_NAME" ]; then
                     (
                         cd $WORKSPACE
-                        git clone git@github.com:Mu2e/${REPO_NAME}.git ${REPO_NAME} || exit 1
+                        git clone https://github.com/Mu2e/${REPO_NAME}.git ${REPO_NAME} || exit 1
                     )
                     if [ $? -ne 0 ]; then 
                         append_report_row "test with" ":x:" "Mu2e/${REPO_NAME} git clone failed"
