@@ -172,9 +172,11 @@ EOM
 cmsbot_report gh-report.md
 
 echo "[$(date)] run build test"
+echo "[$(date)] testing for clang tidy before running build.sh: " `command -v run-clang-tidy`
 (
     source "${TESTSCRIPT_DIR}/build.sh"
 )
+echo "[$(date)] testing for clang tidy after running build.sh: " `command -v run-clang-tidy`
 BUILDTEST_OUTCOME=$?
 ERROR_OUTPUT=$(grep "scons: \*\*\*" scons.log)
 
