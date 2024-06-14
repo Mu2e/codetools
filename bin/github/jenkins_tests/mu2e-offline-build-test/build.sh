@@ -6,12 +6,19 @@ function do_setupstep() {
 
     source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
     if [ "$MU2E_SPACK" ]; then
+        echo "[$(date)]  Check run-clang-tidy " `command -v run-clang-tidy`
         HH=$(spack find --format "{version} {hash:7}" codetools | sort -rn | head -1 | awk '{print $2}' )
         echo "[$(date)] found codetools hash $HH"
         spack load codetools/$HH || exit 1
+        unset HH
+
         echo "[$(date)] spack load llvm/ztl5ab2 " `command -v clang-tidy`
-        spack load llvm/ztl5ab2 || exit 1
-        echo "[$(date)] spack load llvm/ztl5ab2 - success " `command -v clang-tidy`
+        H1=$(spack find --format "{version} {hash:7}" llvm | sort -rn | head -1 | awk '{print $2}' )
+        echo "[$(date)] found llvm hash $H1"
+        spack load llvm/$H1 || exit 1
+        unset H1
+
+        echo "[$(date)] spack load llvm/"$H1" - success " `command -v clang-tidy`
         echo "[$(date)] clang-tidy --version" `clang-tidy --version`
     else
         setup codetools
@@ -19,9 +26,6 @@ function do_setupstep() {
 
     # building prof or debug
     muse setup -q $BUILDTYPE
-
-    echo "[$(date)] MUSE_BUILD_DIR:         "  ${MUSE_BUILD_DIR}
-    echo "[$(date)] MUSE_BUILD_BASE:         "  ${MUSE_BUILD_BASE}
 
     return 0
 }

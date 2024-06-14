@@ -172,11 +172,9 @@ EOM
 cmsbot_report gh-report.md
 
 echo "[$(date)] run build test"
-echo "[$(date)] testing for clang tidy before running build.sh: " `command -v clang-tidy`
 (
     source "${TESTSCRIPT_DIR}/build.sh"
 )
-echo "[$(date)] testing for clang tidy after running build.sh: " `command -v clang-tidy`
 BUILDTEST_OUTCOME=$?
 ERROR_OUTPUT=$(grep "scons: \*\*\*" scons.log)
 
@@ -193,17 +191,27 @@ else
 
         if [ "$MU2E_SPACK" ]; then
 
+            source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+            echo "[$(date)] testing1 for clang tidy: " `command -v clang-tidy`
+            H1=$(spack find --format "{version} {hash:7}" llvm | sort -rn | head -1 | awk '{print $2}' )
+            echo "[$(date)] clang-tidy step found llvm hash $H1"
+            spack load llvm/$H1 || exit 1
+            unset H1
+            muse setup -q $BUILDTYPE
+
+
             #if ! command -v clang-tidy >/dev/null ; then
             #    spack load llvm/ztl5ab2 || exit 1
             #fi
-            echo "[$(date)] testing for clang tidy: " `command -v clang-tidy`
-            echo "[$(date)] MUSE_BUILD_DIR:         "  ${MUSE_BUILD_DIR}
+            echo "[$(date)] testing2 for clang tidy: " `command -v clang-tidy`
+            echo "[$(date)] BUILDTYPE:               "  ${BUILDTYPE}
+            echo "[$(date)] MUSE_BUILD_DIR:          "  ${MUSE_BUILD_DIR}
             echo "[$(date)] MUSE_BUILD_BASE:         "  ${MUSE_BUILD_BASE}
-            echo "[$(date)] CT_FILES:               "  ${CT_FILES}
+            echo "[$(date)] CT_FILES:                "  ${CT_FILES}
             echo "[$(date)] clang-tidy --version" `clang-tidy --version`
-            cp build/*/compile_commands.json .
-            run-clang-tidy ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
-            #run-clang-tidy -p $MUSE_BUILD_DIR ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
+            #cp build/*/compile_commands.json .
+            #run-clang-tidy ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
+            run-clang-tidy -p $MUSE_BUILD_DIR ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
 
         else
             # make sure clang tools can find the compdb
