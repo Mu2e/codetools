@@ -9,9 +9,9 @@ function do_setupstep() {
         HH=$(spack find --format "{version} {hash:7}" codetools | sort -rn | head -1 | awk '{print $2}' )
         echo "[$(date)] found codetools hash $HH"
         spack load codetools/$HH || exit 1
-        echo "[$(date)] spack load llvm/ztl5ab2"
+        echo "[$(date)] spack load llvm/ztl5ab2 " `command -v clang-tidy`
         spack load llvm/ztl5ab2 || exit 1
-        echo "[$(date)] spack load llvm/ztl5ab2 - success"
+        echo "[$(date)] spack load llvm/ztl5ab2 - success " `command -v clang-tidy`
     else
         setup codetools
     fi

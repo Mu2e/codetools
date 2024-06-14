@@ -172,11 +172,11 @@ EOM
 cmsbot_report gh-report.md
 
 echo "[$(date)] run build test"
-echo "[$(date)] testing for clang tidy before running build.sh: " `command -v run-clang-tidy`
+echo "[$(date)] testing for clang tidy before running build.sh: " `command -v clang-tidy`
 (
     source "${TESTSCRIPT_DIR}/build.sh"
 )
-echo "[$(date)] testing for clang tidy after running build.sh: " `command -v run-clang-tidy`
+echo "[$(date)] testing for clang tidy after running build.sh: " `command -v clang-tidy`
 BUILDTEST_OUTCOME=$?
 ERROR_OUTPUT=$(grep "scons: \*\*\*" scons.log)
 
@@ -196,7 +196,7 @@ else
             #if ! command -v clang-tidy >/dev/null ; then
             #    spack load llvm/ztl5ab2 || exit 1
             #fi
-            echo "[$(date)] testing for clang tidy: " `command -v run-clang-tidy`
+            echo "[$(date)] testing for clang tidy: " `command -v clang-tidy`
             echo "[$(date)] MUSE_BUILD_DIR:         "  ${MUSE_BUILD_DIR}
             echo "[$(date)] MUSE_BUILD_BASE:         "  ${MUSE_BUILD_BASE}
             echo "[$(date)] CT_FILES:               "  ${CT_FILES}
