@@ -200,6 +200,7 @@ else
             echo "[$(date)] MUSE_BUILD_DIR:         "  ${MUSE_BUILD_DIR}
             echo "[$(date)] MUSE_BUILD_BASE:         "  ${MUSE_BUILD_BASE}
             echo "[$(date)] CT_FILES:               "  ${CT_FILES}
+            echo "[$(date)] clang-tidy --version" `clang-tidy --version`
             cp build/*/compile_commands.json .
             run-clang-tidy ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
             #run-clang-tidy -p $MUSE_BUILD_DIR ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1

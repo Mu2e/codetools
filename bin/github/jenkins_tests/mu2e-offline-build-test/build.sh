@@ -12,6 +12,7 @@ function do_setupstep() {
         echo "[$(date)] spack load llvm/ztl5ab2 " `command -v clang-tidy`
         spack load llvm/ztl5ab2 || exit 1
         echo "[$(date)] spack load llvm/ztl5ab2 - success " `command -v clang-tidy`
+        echo "[$(date)] clang-tidy --version" `clang-tidy --version`
     else
         setup codetools
     fi
