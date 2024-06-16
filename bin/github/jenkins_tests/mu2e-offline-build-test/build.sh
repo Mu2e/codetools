@@ -6,6 +6,7 @@ function do_setupstep() {
 
     source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
     if [ "$MU2E_SPACK" ]; then
+        #FIXME: I don't believe this is necessary.  Test before removing.
         HH=$(spack find --format "{version} {hash:7}" codetools | sort -rn | head -1 | awk '{print $2}' )
         echo "[$(date)] found codetools hash $HH"
         spack load codetools/$HH || exit 1
