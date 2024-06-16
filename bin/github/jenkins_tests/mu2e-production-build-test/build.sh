@@ -3,10 +3,22 @@
 # Contact: @ryuwd on GitHub
 
 function do_setupstep() {
-    source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
-    setup mu2e
-    setup muse
-    setup codetools
+    source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+    if [ "$MU2E_SPACK" ]; then
+        #FIXME: I don't believe this is necessary.  Test before removing.
+        HH=$(spack find --format "{version} {hash:7}" codetools | sort -rn | head -1 | awk '{print $2}' )
+        echo "[$(date)] found codetools hash $HH"
+        spack load codetools/$HH || exit 1
+        unset HH
+
+        H1=$(spack find --format "{version} {hash:7}" llvm | sort -rn | head -1 | awk '{print $2}' )
+        echo "[$(date)] found llvm hash $H1"
+        spack load llvm/$H1 || exit 1
+        unset H1
+
+    else
+        setup codetools
+    fi
 
     # building prof or debug
     muse setup -q $BUILDTYPE

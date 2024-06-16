@@ -134,22 +134,37 @@ if [[ -z $CT_FILES ]]; then
     CT_STATUS=":white_check_mark:"
 else
 
+    # FIXME: check if I do test with Offline/#NNN will any modified .cc files make it to here?
+    # If not it can be deleted.
     echo "[$(date)] run clang tidy"
     (
         cd $WORKSPACE/$REPO || exit 1;
         set --
 
-        # make sure clang tools can find the compdb
-        # in an obvious location
-        mv gen/compile_commands.json .
+        if [ "$MU2E_SPACK" ]; then
 
-        source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups
-        setup mu2e
-        setup clang v5_0_1
+            source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+            H1=$(spack find --format "{version} {hash:7}" llvm | sort -rn | head -1 | awk '{print $2}' )
+            echo "[$(date)] clang-tidy step found llvm hash $H1"
+            spack load llvm/$H1 || exit 1
+            unset H1
+            muse setup -q $BUILDTYPE
 
-        # run clang-tidy
-        CLANG_TIDY_ARGS="-extra-arg=-isystem$CLANG_FQ_DIR/include/c++/v1 -p . -j 24"
-        run-clang-tidy ${CLANG_TIDY_ARGS} ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
+            run-clang-tidy -p $MUSE_BUILD_DIR ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
+
+        else
+            # make sure clang tools can find the compdb
+            # in an obvious location
+            # FIXME: this is different than in offline?  Is that right?
+            mv gen/compile_commands.json .
+
+            source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+            setup clang v14_0_6c
+
+            # run clang-tidy
+            CLANG_TIDY_ARGS="-extra-arg=-isystem$CLANG_FQ_DIR/include/c++/v1  -extra-arg=-isystem$CLANG_FQ_DIR/include/x86_64-unknown-linux-gnu/c++/v1 -p . -j 24"
+            run-clang-tidy ${CLANG_TIDY_ARGS} ${CT_FILES} > $WORKSPACE/clang-tidy.log || exit 1
+        fi
     )
 
     if [ $? -ne 1 ]; then
