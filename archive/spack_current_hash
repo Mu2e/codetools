@@ -1,0 +1,24 @@
+#! /bin/bash
+#
+# print the hash of the current preferred install of a package
+#
+# $1 the spack package
+#
+PKG="$1"
+if [ ! "$PKG" ]; then
+    echo "spack_current_hash_no_package"
+    exit 1
+fi
+case "$PKG" in
+    llvm) HASH=ztl5ab2;;
+    codetools) HASH=zkbjcf3;;
+    muse) HASH=27fo4tz;;
+    git) HASH=q3orrja;;
+esac
+if [ "$HASH" ]; then
+    echo "$HASH"
+    exit 0
+else
+    echo "spack_current_hash_pacakge_not_found"
+    exit 1
+fi
