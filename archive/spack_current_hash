@@ -10,10 +10,11 @@ if [ ! "$PKG" ]; then
     exit 1
 fi
 case "$PKG" in
-    llvm) HASH=ztl5ab2;;
     codetools) HASH=zkbjcf3;;
-    muse) HASH=27fo4tz;;
     git) HASH=q3orrja;;
+    llvm) HASH=ztl5ab2;;
+    muse) HASH=27fo4tz;;
+    postgresql) HASH=4neyrzsd;;
 esac
 if [ "$HASH" ]; then
     echo "$HASH"
