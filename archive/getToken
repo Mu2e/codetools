@@ -1,0 +1,10 @@
+#! /bin/bash
+#
+# run htgettoken to generate a vault token or bearer token as needed
+#
+if [ "$USER" == "mu2epro" ]; then
+    htgettoken -i mu2e --vaultserver htvaultprod.fnal.gov -r production "$@"
+else
+    htgettoken -i mu2e --vaultserver htvaultprod.fnal.gov "$@"
+fi
+exit $?

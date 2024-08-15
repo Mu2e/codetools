@@ -1,0 +1,64 @@
+#! /bin/bash
+#
+# a script that can be executed at any time to update your
+# cert-based x509 and voms proxy authorization to a maximum lifetime
+# You must already have a valid kerberos ticket.
+# This should NOT be run on a grid node since your certs
+# in a grid job are maintained by the FermiGrid software
+#
+
+echo "[ $(date) ] vomsCert start"
+TMPP=$(mktemp)
+TMPV=$(mktemp)
+FINV=/tmp/x509up_u$UID
+
+echo "[ $(date) ] current kerberos"
+/usr/bin/klist
+RC=$?
+if [ $RC -eq 0 ]; then
+  echo "[ $(date) ] found a valid kerberos ticket"
+else
+  echo "ERROR - klist did not find a valid kerberos ticket, please run kinit"
+  exit 1
+fi
+
+echo "[ $(date) ] make x509 in a temp file"
+if [ -x /usr/bin/cigetcert ]; then
+    cicommand="/usr/bin/cigetcert"
+else
+    # if not already in path
+    if ! command -v cigetcert > /dev/null ; then
+        # and if ups is setup
+        if [ "$(command -v setup)" == "setup" ] ; then
+            setup cigetcert
+        fi
+    fi
+    cicommand="cigetcert"
+fi
+
+if ! command -v cigetcert > /dev/null ; then
+    echo "ERROR - could not find cigetcert command"
+    exit 1
+fi
+
+$cicommand -i "Fermi National Accelerator Laboratory" -o $TMPP
+
+echo "[ $(date) ] show x509"
+voms-proxy-info -file $TMPP
+
+echo "[ $(date) ] make voms proxy"
+voms-proxy-init -hours 120 -noregen -rfc \
+  -voms fermilab:/fermilab/mu2e/Role=Analysis \
+  -cert $TMPP -out $TMPV
+
+echo "[ $(date) ] mv to $FINV"
+mv $TMPV $FINV
+
+echo "[ $(date) ] show voms "
+voms-proxy-info -all
+
+rm -f $TMPP
+
+echo "[ $(date) ] vomsCert done"
+
+exit 0
