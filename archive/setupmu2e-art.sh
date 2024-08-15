@@ -5,6 +5,9 @@
 #
 #
 
+# jump out if this has already been run
+[ "$MU2E" ] && return 0
+
 # where mu2e-managed products are (artexternals)
 export MU2E=/cvmfs/mu2e.opensciencegrid.org
 
@@ -13,9 +16,9 @@ export MU2E_DATA_PATH=${MU2E}/DataFiles
 
 OSID=$( source /etc/os-release 2> /dev/null ; echo $ID )
 if [ "$OSID" == "scientific" ]; then
-    OSNAME="sl7"
+    export MU2E_OSNAME="sl7"
 elif [ "$OSID" == "almalinux" ]; then
-    OSNAME="al9"
+    export MU2E_OSNAME="al9"
     export UPS_OVERRIDE="-H Linux64bit+5.14-2.34-al9-3"
     export MU2E_SPACK=true
 fi
@@ -34,11 +37,17 @@ export -f unsetup
 # this is separate from above so that it can be set by the user on sl7
 if [ "$MU2E_SPACK" ]; then
     source /cvmfs/mu2e.opensciencegrid.org/packages/setup-env.sh
-    if [ "$(spack arch | grep almalinux)" ]; then
+    if [ "$MU2E_OSNAME" == "al9" ]; then
 	spack load git/q3orrja
+	spack load muse/27fo4tz
+	source $MUSE_DIR/bin/museDefine.sh
     else
 	spack load git/wzyi4om
+	setup muse
     fi
+    spack_load_current() { spack load $1/$(spack_current_hash $1);}
+    slc() { spack_load_current "$@";}
+    export -f spack_load_current slc
     export METACAT_SERVER_URL="https://metacat.fnal.gov:9443/mu2e_meta_prod/app"
     export METACAT_AUTH_SERVER_URL="https://metacat.fnal.gov:8143/auth/mu2e"
     export DATA_DISPATCHER_URL="https://metacat.fnal.gov:9443/mu2e_dd_prod/data"
@@ -51,13 +60,12 @@ if [ "$MU2E_SPACK" ]; then
     fi
 else
     setup git
+    setup muse
 fi
 
 # add some Mu2e utility commands
 export PATH=`dropit -p $PATH -sf /cvmfs/mu2e.opensciencegrid.org/bin`
 
-# setup Muse for convenience
-setup muse
 
 # Access to Mu2e cvs
 export CVSROOT=mu2ecvs@cdcvs.fnal.gov:/cvs/mu2e
