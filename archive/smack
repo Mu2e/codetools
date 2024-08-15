@@ -1,0 +1,471 @@
+#! /bin/bash
+#
+#
+#
+#
+usage() {
+cat << EOF
+  status
+  subspack DIR - make subspack with cvmfs upstream
+  subspack2 DIR - make subspack with cvmfs/packages2 upstream
+  subenv OLDENV (on cvmfs) NEWENV (in current subspack)
+      old install should be setup
+  synccache - writes sync.sh and cvmsfs.h to move local install through cache
+  pushcache - copy ./bc to mu2e mirror
+  installmu - copy scisoft mu manifest spack lock and yaml and install packages
+      ARGS: spack.yaml spack.lock (url or filespec) new env name
+EOF
+}
+
+sstatus() {
+  if [ ! "$SPACK_ROOT" ]; then
+    echo "No spack is setup"
+    usage
+    return 1
+  fi
+  echo "PWD=$PWD"
+#  echo "SPACK_ROOT=$( echo $SPACK_ROOT | sed 's/opensciencegrid.org/\./')"
+  echo "SPACK_ROOT=$SPACK_ROOT"
+  echo "SPACK_INSTALL=$SPACK_INSTALL"
+  echo "SPACK_ENV=$SPACK_ENV"
+  echo "SPACK_ENV_VIEW=$SPACK_ENV_VIEW"
+  spack find --loaded
+
+}
+
+
+# make a local subspack with the standard location upstream
+# there should be one argument which is a path to the new install
+subspack() {
+  local VV=true
+  local DDIR=$(readlink -f $1)
+  if [ ! "$DDIR" ]; then
+    echo "No new directory argument is given"
+    usage
+    return 22
+  fi
+  if [ ! "$SPACK_ROOT" ]; then
+    echo "No spack is setup"
+    usage
+    return 1
+  fi
+
+  if ! mkdir -p $DDIR ; then
+    echo "Could not make new subspack directory $DDIR"
+    return 1
+  fi
+
+  local ODIR=$PWD
+
+  cd $DDIR || return 1
+
+  rsync -rl /exp/mu2e/app/users/rlc/spack/spack_template/ .
+
+  cd spack/var/spack/repos || return 1
+  RLIST="scd_recipes artdaq-spack local"
+  #for RR in $RLIST builtin
+  #do
+  #    ln -s $SPACK_ROOT/var/spack/repos/$RR
+  #done
+  (
+      source $DDIR/setup-env.sh
+
+      #echo DEB0
+      #spack repo list
+
+      for RR in $RLIST fnal_art mu2e-spack
+      do
+          #echo "DEB $PWD/$RR"
+          spack repo add --scope site $PWD/$RR > /dev/null
+      done
+
+      echo "resetting bootstrap"
+      if [ ! "$SPACK_INSTALL" ]; then
+          echo "error - SPACK_INSTALL not set"
+          exit 1
+      fi
+      spack bootstrap root $SPACK_INSTALL/.bootstrap.almalinux9
+      echo "trusting buildcache keys"
+      spack buildcache keys --install --trust
+
+  )
+
+
+#  echo "updating buildcache keys"
+#  spack buildcache keys
+  
+  #if [ -d mu2e-spack ]; the
+  #    cd mu2e-spack
+  #fi
+  #git clone http://github.com/Mu2e/mu2e-
+
+}
+
+
+
+# make a local subspack with the standard location upstream
+# there should be one argument which is a path to the new install
+subspack2() {
+  local VV=true
+  local DDIR=$(readlink -f $1)
+  if [ ! "$DDIR" ]; then
+    echo "No new directory argument is given"
+    usage
+    return 22
+  fi
+  if [ ! "$SPACK_ROOT" ]; then
+    echo "No spack is setup"
+    usage
+    return 1
+  fi
+
+  echo "making subspack dir"
+  if ! mkdir -p $DDIR ; then
+    echo "Could not make new subspack directory $DDIR"
+    return 1
+  fi
+
+  local ODIR=$PWD
+
+  cd $DDIR || return 1
+
+  # try to get by without tmp!!
+
+  echo "create setup-env.sh"
+  cat << EOF > setup-env.sh
+export SPACK_SKIP_MODULES=true
+export SPACK_DISABLE_LOCAL_CONFIG=true
+export SPACK_INSTALL=\$(dirname \$(readlink -f \$BASH_SOURCE))
+export SPACK_LOCAL=\$(echo \$SPACK_INSTALL/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__ | cut -c -255)
+source \$SPACK_INSTALL/spack/share/spack/setup-env.sh
+EOF
+
+  echo "create spack dir"
+  mkdir spack
+  cd spack
+  #the location of bin determines the config paths!
+  rsync -rl $SPACK_ROOT/bin .
+  rsync -rl $SPACK_ROOT/lib .
+  #rsync -rl $SPACK_ROOT/opt .
+  rsync -rl $SPACK_ROOT/share .
+
+  rsync -rl $SPACK_ROOT/etc .
+
+  echo "create config.yaml"
+  cat << EOF > etc/spack/config.yaml
+config:
+  install_tree:
+    projections:
+      all: '{package.name}/{version}/{architecture}-{compiler.name}-{compiler.version}-{hash}'
+    root: \$spack/..
+    padded_length: 255
+EOF
+
+  #try to get by without modules !!
+  if [ -f etc/spack/upstreams_subspack.yaml ]; then
+      echo "create upstreams.yaml from upstreams_subspack.yaml"
+      mv etc/spack/upstreams_subspack.yaml etc/spack/upstreams.yaml
+  else
+      echo "create upstreams.yaml"
+      cat << EOF > etc/spack/upstreams.yaml
+   upstreams:
+    spack-instance-1:
+      install_tree: $SPACK_INSTALL
+EOF
+  fi
+
+  mkdir -p var/spack
+  # try to get by without gpg here!!
+
+  echo "create local recipe repos"
+  # full list of repos will be reconstructed, remove old list
+  cd $DDIR || return 1
+  find spack/etc/spack -name "repos.yaml" -delete
+
+  # builtin must be in its standard location
+  cd $DDIR || return 1
+  mkdir -p spack/var/spack/repos
+  cd spack/var/spack/repos || exit 1
+  ln -s $SPACK_ROOT/var/spack/repos/builtin
+
+  # put other repos up at the top level
+  cd $DDIR || return 1
+  mkdir repos || return 1
+  cd repos
+  # try to get by with out local, tutorial and ups_to_spack!!
+
+  git clone https://github.com/FNALssi/fnal_art -b develop
+  git clone https://github.com/marcmengel/scd_recipes -b master
+  git clone https://github.com/art-daq/artdaq-spack -b develop
+  git clone https://github.com/Mu2e/mu2e-spack -b main
+  (
+      source $DDIR/setup-env.sh
+
+      #echo DEB0
+      #spack repo list
+      spack repo add $DDIR/spack/var/spack/repos/builtin
+
+      # last declared is first searched
+      for RR in fnal_art scd_recipes artdaq-spack mu2e-spack
+      do
+          #echo "DEB $PWD/$RR"
+          spack repo add --scope site $PWD/$RR > /dev/null
+      done
+
+#      echo "resetting bootstrap"
+#      if [ ! "$SPACK_INSTALL" ]; then
+#          echo "error - SPACK_INSTALL not set"
+#          exit 1
+#      fi
+#      spack bootstrap root $SPACK_INSTALL/.bootstrap.almalinux9
+#      echo "trusting buildcache keys"
+#      spack buildcache keys --install --trust
+
+  )
+
+
+#  echo "updating buildcache keys"
+#  spack buildcache keys
+  
+  #if [ -d mu2e-spack ]; the
+  #    cd mu2e-spack
+  #fi
+  #git clone http://github.com/Mu2e/mu2e-
+
+}
+
+
+# make a new env from spack.lock of another env
+# there should be one argument which is a path to the new install
+subenv() {
+  local NENV="$1"
+  if [ ! "$NENV" ]; then
+    echo "No new env argument is given"
+    usage
+    return 1
+  fi
+  if [ "$SPACK_ENV" ]; then
+      echo "Error - an env is already setup, this is an uncertain situation"
+      return 1
+  fi
+  if [ ! "$SPACK_ROOT" ]; then
+      source /cvmfs/mu2e.opensciencegrid.org/packages/setup-env.sh
+  fi
+
+  OENV="$2"
+  # is no
+  if [ ! "$OENV" ]; then
+      # attempt to get the current env based on muse current
+      ODIR=$(
+         if muse setup Offline 2>&1 > /dev/null ; then
+             echo $SPACK_ENV
+         fi
+      )
+      if [ ! "$ODIR" ]; then
+          echo "Error - could not setup current Offline"
+      fi
+      OENV=$(basename $ODIR)
+  else
+      # an env name was given, try to activate it in the current spack
+      ODIR=$(
+#echo "activate OENV=$OENV SPACK_ROOT=$SPACK_ROOT" > s.log
+#spack env list >> s.log
+          spack env activate $OENV
+          RC=$?
+          [ $RC -ne 0 ] && exit $RC
+          echo $SPACK_ENV
+          exit 0
+      )
+  fi
+
+  if [ ! -r $ODIR/spack.lock ]; then
+      echo "Error - old env does not have a spack.lock"
+      return 1
+  fi
+  if [ ! -r $ODIR/spack.yaml ]; then
+      echo "Error - old env does not have a spack.yaml"
+      return 1
+  fi
+
+  echo "making a env $NENV from $ODIR"
+
+  local TMPD=$(mktemp -d)
+  cat $ODIR/spack.lock | jq > $TMPD/spack.lock
+  spack env create --without-view -d $PWD/$NENV $TMPD/spack.lock
+  cp  $ODIR/spack.yaml $PWD/$NENV
+  rm -rf $TMPD
+
+}
+
+
+# assuming a subspack is setup, look into the local install dir and produce
+# two files sync.sh (top copy install into buildcache) and cvmfs.sh
+# to run on cvmfs to install from buildcache
+synccache() {
+
+    if [ ! "$SPACK_LOCAL" ]; then
+        echo SPACK_LOCAL is not set
+        return 1
+    fi
+    PKGS=$(ls -1 $SPACK_LOCAL | grep -v spack | grep -v setup-env | grep -v sbang)
+    NP=$(echo $PKGS | wc -w)
+    echo "writing sync.sh and cvmfs.sh to sync $NP packages"
+
+    rm -f sync.sh
+    touch sync.sh
+    chmod a+x sync.sh
+    rm -f cvmfs.sh
+    touch cvmfs.sh
+    chmod a+x cvmfs.sh
+
+    for PKG in $PKGS
+    do
+        VERS=$(ls -1 $SPACK_LOCAL/$PKG | grep -v version | grep -v table)
+        for VER in $VERS
+        do
+            HASHES=$(ls -1 $SPACK_LOCAL/$PKG/$VER | awk -F "-" '{print $NF}')
+            for HH in $HASHES
+            do
+                echo "spack buildcache create -k \$MYKEY --only package ./bc $PKG/$HH" >> sync.sh
+                echo "spack install --cache-only $PKG/$HH" >> cvmfs.sh
+            done
+        done
+    done
+
+    return 0
+}
+
+# push buildcache ./bc to mu2e cache in scisoft
+pushcache() {
+    if [ ! -d ./bc ]; then
+        echo "buildcache ./bs not found"
+        return 1
+    fi
+    echo "Updating local index"
+    spack buildcache update-index -k ./bc  || return 1
+    echo "Copying to remote"
+    scp -r bc/build_cache products@fifeutilgpvm03.fnal.gov:/spack_cache/mu2e || return 1
+    echo "Updating remote index"
+    ssh products@fifeutilgpvm03.fnal.gov ". /home/products/spack/share/spack/setup-env.sh spack ; spack --debug buildcache update-index -k /spack_cache/mu2e" || return 1
+    return 0
+}
+
+
+# install mu manifest from art build
+# spack.yaml spack.lock (filespec or url) new_env_name
+installmu() {
+    if [ $# -ne 3 ]; then
+        echo "ERROR require three args"
+        return 1
+    fi
+    NENV="$3"
+
+    echo "fetching lock and yaml"
+    local TMPD=$(mktemp -d)
+
+    if [[ "$1" =~ "http" ]]; then
+        curl -s -o $TMPD/spack.yaml $1
+    else
+        cp $1 $TMPD/spack.yaml
+    fi
+    [ $? -ne 0 ] && return 1
+
+    if [[ "$2" =~ "http" ]]; then
+        curl -s -o $TMPD/spack.lock0 $2
+    else
+        cp $2 $TMPD/spack.lock0
+    fi
+    [ $? -ne 0 ] && return 1
+
+    cat $TMPD/spack.lock0 | jq > $TMPD/spack.lock
+    rm -f $TMPD/spack.lock0
+
+    echo "create new env $NENV"
+    spack env create --without-view $NENV $TMPD/spack.lock
+    [ $? -ne 0 ] && return 1
+
+    echo "spack env activate"
+    spack env activate $NENV
+    [ $? -ne 0 ] && return 1
+
+    echo "copy in spack.yaml"
+    cp $TMPD/spack.yaml $SPACK_ENV
+    [ $? -ne 0 ] && return 1
+
+    rm -rf $TMPD
+
+    echo "spack install"
+    spack install --fail-fast --cache-only
+    [ $? -ne 0 ] && return 1
+
+    echo "spack env deactivate"
+    spack env deactivate
+    [ $? -ne 0 ] && return 1
+
+    return 0
+}
+
+
+#
+#  main
+#
+
+if [ ! "$SPACK_ROOT" ]; then
+    if [ -r /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh ]; then
+        source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+    else
+        echo "Error - can't find mu2einit setup script"
+        exit 1
+    fi
+fi
+
+if [ "$MU2E_OSNAME" != "al9" ]; then
+    echo "smack only supported on al9 OS"
+    exit 1
+fi
+
+COMMAND=$1
+shift
+case $COMMAND in
+  -h|--help|help) usage; exit 0 ;;
+  status) sstatus "$@" ;;
+  subspack) subspack "$@" ;;
+  subspack2) subspack2 "$@" ;;
+  subenv) subenv "$@" ;;
+  synccache) synccache "$@" ;;
+  pushcache) pushcache "$@" ;;
+  installmu) installmu "$@" ;;
+  "") echo -e "\n No command given\n";
+      usage;;
+  *)  echo -e "\n Unknown command \"$COMMAND\"\n";
+      usage;;
+esac
+RC=$?
+#echo "RC=$RC"
+# $@ still includes arguments to the subcommand
+
+exit $RC
+
+
+## extract options and their arguments into variables.
+#while getopts a:b OPTION ; do
+#    echo "option=$OPTION"
+#    case $OPTION in
+#        a) ARG_A=$OPTARG ;;
+#        b) ARG_B=1 ;;
+#        *) echo "Internal error!" ; exit 1 ;;
+#    esac
+#done
+## shift away the switches to get remainder
+#echo "OPTIND=$OPTIND"
+#shift $((OPTIND-1))
+#PARS="$@"
+#
+#echo "ARG_A = $ARG_A"
+#echo "ARG_B = $ARG_B"
+#echo "PARS = $PARS"
+
+// This tells emacs to view this file in c++ mode.
+// Local Variables:
+// mode:shell
+// End:

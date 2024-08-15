@@ -1,0 +1,16 @@
+#! /bin/bash
+#
+# remove bearer token from standard location
+#
+if [ -n "$BEARER_TOKEN_FILE" ]; then
+    rm -f $BEARER_TOKEN_FILE
+    exit 0
+fi
+
+if [ "$USER" == "mu2epro" ]; then
+    rm -f /tmp/bt_token_mu2e_production_44592
+else
+    rm -f /run/user/${UID}/bt_u${UID}
+fi
+
+exit 0

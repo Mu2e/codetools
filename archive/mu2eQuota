@@ -1,0 +1,45 @@
+#! /usr/bin/env bash
+
+REG="^-.*"
+if [[ "$1" =~ $REG ]]; then
+    cat <<EOF
+
+mu2eQuota [username]
+
+Show user free space and quota on Mu2e Ceph disks.
+
+[username] optional username argument, defaults to \$USER
+
+EOF
+
+    exit 0
+fi
+
+xuser=$1
+if [ "$xuser" == "" ]; then
+  xuser=$USER
+fi
+echo "For user: " $xuser
+
+
+for FS in /exp/mu2e/data /exp/mu2e/app
+do
+    QUOTAB=$( getfattr  -n 'ceph.quota.max_bytes' $FS/users/$xuser 2>/dev/null | grep bytes | tr '"' ' ' | awk '{print $2}')
+    USEB=$( getfattr  -n 'ceph.dir.rbytes' $FS/users/$xuser 2>/dev/null | grep bytes | tr '"' ' ' | awk '{print $2}')
+    QUOTA=$((QUOTAB/1000000000))
+    USE=$((USEB/1000000000))
+    FREE=$((QUOTA-USE))
+    printf "%15s %4d GB free of %4d GB\n" $FS $FREE $QUOTA
+done
+
+if [ "$xuser" == "$USER" ]; then
+    QLINEB=$(quota -umw -f /nashome | grep /home)
+    USEB=$(echo $QLINEB | awk '{print $2}')
+    QUOTAB=$(echo $QLINEB | awk '{print $4}')
+    QUOTA=$((QUOTAB/1000))
+    USE=$((USEB/1000))
+    FREE=$((QUOTA-USE))
+    printf "%15s %4d MB free of %4d MB\n" ~$USER $FREE $QUOTA
+else
+    echo "Can't show home quote for users not yourself"
+fi

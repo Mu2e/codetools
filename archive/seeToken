@@ -1,0 +1,7 @@
+#! /bin/bash
+#
+# decode and print bearer token from standard location
+#
+
+httokendecode "$@"
+
