@@ -7,9 +7,13 @@ usage() {
 cat << EOF
   status
   subspack DIR - make subspack with cvmfs upstream
+  subspack2 DIR - make subspack with cvmfs/packages2 upstream
   subenv OLDENV (on cvmfs) NEWENV (in current subspack)
+      old install should be setup
   synccache - writes sync.sh and cvmsfs.h to move local install through cache
-  pushcache - copt ./bc to mu2e mirror
+  pushcache - copy ./bc to mu2e mirror
+  installmu - copy scisoft mu manifest spack lock and yaml and install packages
+      ARGS: spack.yaml spack.lock (url or filespec) new env name
 EOF
 }
 
@@ -23,6 +27,8 @@ sstatus() {
 #  echo "SPACK_ROOT=$( echo $SPACK_ROOT | sed 's/opensciencegrid.org/\./')"
   echo "SPACK_ROOT=$SPACK_ROOT"
   echo "SPACK_INSTALL=$SPACK_INSTALL"
+  echo "SPACK_ENV=$SPACK_ENV"
+  echo "SPACK_ENV_VIEW=$SPACK_ENV_VIEW"
   spack find --loaded
 
 }
@@ -53,8 +59,7 @@ subspack() {
 
   cd $DDIR || return 1
 
-#  rsync -rl /exp/mu2e/app/users/rlc/spack/spack_template/ .
-  rsync -rl /cvmfs/mu2e.opensciencegrid.org/DataFiles/spack/spack_template/ .
+  rsync -rl /exp/mu2e/app/users/rlc/spack/spack_template/ .
 
   cd spack/var/spack/repos || return 1
   RLIST="scd_recipes artdaq-spack local"
@@ -75,7 +80,11 @@ subspack() {
       done
 
       echo "resetting bootstrap"
-      spack bootstrap root /cvmfs/mu2e.opensciencegrid.org/packages/.bootstrap.almalinux9
+      if [ ! "$SPACK_INSTALL" ]; then
+          echo "error - SPACK_INSTALL not set"
+          exit 1
+      fi
+      spack bootstrap root $SPACK_INSTALL/.bootstrap.almalinux9
       echo "trusting buildcache keys"
       spack buildcache keys --install --trust
 
@@ -91,6 +100,140 @@ subspack() {
   #git clone http://github.com/Mu2e/mu2e-
 
 }
+
+
+
+# make a local subspack with the standard location upstream
+# there should be one argument which is a path to the new install
+subspack2() {
+  local VV=true
+  local DDIR=$(readlink -f $1)
+  if [ ! "$DDIR" ]; then
+    echo "No new directory argument is given"
+    usage
+    return 22
+  fi
+  if [ ! "$SPACK_ROOT" ]; then
+    echo "No spack is setup"
+    usage
+    return 1
+  fi
+
+  echo "making subspack dir"
+  if ! mkdir -p $DDIR ; then
+    echo "Could not make new subspack directory $DDIR"
+    return 1
+  fi
+
+  local ODIR=$PWD
+
+  cd $DDIR || return 1
+
+  # try to get by without tmp!!
+
+  echo "create setup-env.sh"
+  cat << EOF > setup-env.sh
+export SPACK_SKIP_MODULES=true
+export SPACK_DISABLE_LOCAL_CONFIG=true
+export SPACK_INSTALL=\$(dirname \$(readlink -f \$BASH_SOURCE))
+export SPACK_LOCAL=\$(echo \$SPACK_INSTALL/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__ | cut -c -255)
+source \$SPACK_INSTALL/spack/share/spack/setup-env.sh
+EOF
+
+  echo "create spack dir"
+  mkdir spack
+  cd spack
+  #the location of bin determines the config paths!
+  rsync -rl $SPACK_ROOT/bin .
+  rsync -rl $SPACK_ROOT/lib .
+  #rsync -rl $SPACK_ROOT/opt .
+  rsync -rl $SPACK_ROOT/share .
+
+  rsync -rl $SPACK_ROOT/etc .
+
+  echo "create config.yaml"
+  cat << EOF > etc/spack/config.yaml
+config:
+  install_tree:
+    projections:
+      all: '{package.name}/{version}/{architecture}-{compiler.name}-{compiler.version}-{hash}'
+    root: \$spack/..
+    padded_length: 255
+EOF
+
+  #try to get by without modules !!
+  if [ -f etc/spack/upstreams_subspack.yaml ]; then
+      echo "create upstreams.yaml from upstreams_subspack.yaml"
+      mv etc/spack/upstreams_subspack.yaml etc/spack/upstreams.yaml
+  else
+      echo "create upstreams.yaml"
+      cat << EOF > etc/spack/upstreams.yaml
+   upstreams:
+    spack-instance-1:
+      install_tree: $SPACK_INSTALL
+EOF
+  fi
+
+  mkdir -p var/spack
+  # try to get by without gpg here!!
+
+  echo "create local recipe repos"
+  # full list of repos will be reconstructed, remove old list
+  cd $DDIR || return 1
+  find spack/etc/spack -name "repos.yaml" -delete
+
+  # builtin must be in its standard location
+  cd $DDIR || return 1
+  mkdir -p spack/var/spack/repos
+  cd spack/var/spack/repos || exit 1
+  ln -s $SPACK_ROOT/var/spack/repos/builtin
+
+  # put other repos up at the top level
+  cd $DDIR || return 1
+  mkdir repos || return 1
+  cd repos
+  # try to get by with out local, tutorial and ups_to_spack!!
+
+  git clone https://github.com/FNALssi/fnal_art -b develop
+  git clone https://github.com/marcmengel/scd_recipes -b master
+  git clone https://github.com/art-daq/artdaq-spack -b develop
+  git clone https://github.com/Mu2e/mu2e-spack -b main
+  (
+      source $DDIR/setup-env.sh
+
+      #echo DEB0
+      #spack repo list
+      spack repo add $DDIR/spack/var/spack/repos/builtin
+
+      # last declared is first searched
+      for RR in fnal_art scd_recipes artdaq-spack mu2e-spack
+      do
+          #echo "DEB $PWD/$RR"
+          spack repo add --scope site $PWD/$RR > /dev/null
+      done
+
+#      echo "resetting bootstrap"
+#      if [ ! "$SPACK_INSTALL" ]; then
+#          echo "error - SPACK_INSTALL not set"
+#          exit 1
+#      fi
+#      spack bootstrap root $SPACK_INSTALL/.bootstrap.almalinux9
+#      echo "trusting buildcache keys"
+#      spack buildcache keys --install --trust
+
+  )
+
+
+#  echo "updating buildcache keys"
+#  spack buildcache keys
+  
+  #if [ -d mu2e-spack ]; the
+  #    cd mu2e-spack
+  #fi
+  #git clone http://github.com/Mu2e/mu2e-
+
+}
+
 
 # make a new env from spack.lock of another env
 # there should be one argument which is a path to the new install
@@ -125,7 +268,7 @@ subenv() {
   else
       # an env name was given, try to activate it in the current spack
       ODIR=$(
-#echo "activate OENV=$OENV SPCAK_ROOT=$SPACK_ROOT" > s.log
+#echo "activate OENV=$OENV SPACK_ROOT=$SPACK_ROOT" > s.log
 #spack env list >> s.log
           spack env activate $OENV
           RC=$?
@@ -148,7 +291,7 @@ subenv() {
 
   local TMPD=$(mktemp -d)
   cat $ODIR/spack.lock | jq > $TMPD/spack.lock
-  spack env create -d $PWD/$NENV $TMPD/spack.lock
+  spack env create --without-view -d $PWD/$NENV $TMPD/spack.lock
   cp  $ODIR/spack.yaml $PWD/$NENV
   rm -rf $TMPD
 
@@ -164,7 +307,7 @@ synccache() {
         echo SPACK_LOCAL is not set
         return 1
     fi
-    PKGS=$(ls -1 $SPACK_LOCAL)
+    PKGS=$(ls -1 $SPACK_LOCAL | grep -v spack | grep -v setup-env | grep -v sbang)
     NP=$(echo $PKGS | wc -w)
     echo "writing sync.sh and cvmfs.sh to sync $NP packages"
 
@@ -177,7 +320,7 @@ synccache() {
 
     for PKG in $PKGS
     do
-        VERS=$(ls -1 $SPACK_LOCAL/$PKG)
+        VERS=$(ls -1 $SPACK_LOCAL/$PKG | grep -v version | grep -v table)
         for VER in $VERS
         do
             HASHES=$(ls -1 $SPACK_LOCAL/$PKG/$VER | awk -F "-" '{print $NF}')
@@ -207,6 +350,62 @@ pushcache() {
     return 0
 }
 
+
+# install mu manifest from art build
+# spack.yaml spack.lock (filespec or url) new_env_name
+installmu() {
+    if [ $# -ne 3 ]; then
+        echo "ERROR require three args"
+        return 1
+    fi
+    NENV="$3"
+
+    echo "fetching lock and yaml"
+    local TMPD=$(mktemp -d)
+
+    if [[ "$1" =~ "http" ]]; then
+        curl -s -o $TMPD/spack.yaml $1
+    else
+        cp $1 $TMPD/spack.yaml
+    fi
+    [ $? -ne 0 ] && return 1
+
+    if [[ "$2" =~ "http" ]]; then
+        curl -s -o $TMPD/spack.lock0 $2
+    else
+        cp $2 $TMPD/spack.lock0
+    fi
+    [ $? -ne 0 ] && return 1
+
+    cat $TMPD/spack.lock0 | jq > $TMPD/spack.lock
+    rm -f $TMPD/spack.lock0
+
+    echo "create new env $NENV"
+    spack env create --without-view $NENV $TMPD/spack.lock
+    [ $? -ne 0 ] && return 1
+
+    echo "spack env activate"
+    spack env activate $NENV
+    [ $? -ne 0 ] && return 1
+
+    echo "copy in spack.yaml"
+    cp $TMPD/spack.yaml $SPACK_ENV
+    [ $? -ne 0 ] && return 1
+
+    rm -rf $TMPD
+
+    echo "spack install"
+    spack install --fail-fast --cache-only
+    [ $? -ne 0 ] && return 1
+
+    echo "spack env deactivate"
+    spack env deactivate
+    [ $? -ne 0 ] && return 1
+
+    return 0
+}
+
+
 #
 #  main
 #
@@ -231,9 +430,11 @@ case $COMMAND in
   -h|--help|help) usage; exit 0 ;;
   status) sstatus "$@" ;;
   subspack) subspack "$@" ;;
+  subspack2) subspack2 "$@" ;;
   subenv) subenv "$@" ;;
   synccache) synccache "$@" ;;
   pushcache) pushcache "$@" ;;
+  installmu) installmu "$@" ;;
   "") echo -e "\n No command given\n";
       usage;;
   *)  echo -e "\n Unknown command \"$COMMAND\"\n";
