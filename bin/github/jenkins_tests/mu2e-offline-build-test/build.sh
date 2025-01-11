@@ -229,7 +229,35 @@ function do_runstep() {
         echo "Return Code: $RC" >> "${WORKSPACE}/g4surfaceCheck.log"
         echo "[$(date)] g4surfaceCheck return code is ${RC}"
     ) &
-    
+
+    # check trigger results against a standard log file in the mtc repo
+    (
+        echo "[$(date)] checking trigger exe result"
+        ${WORKSPACE}/mu2e_trig_config/ci/check_trigger_results.sh \
+                     > ${WORKSPACE}/trigger.log &
+        TESTPID=$!
+
+        babysit_test "trigger" "${TESTPID}" # Kills the test after TEST_TIMEOUT seconds
+        wait $TESTPID; # Wait for process to finish
+        RC=$? # grab the return code from the process
+
+        if [ ${RC} -eq 0 ]; then
+            echo "Job completed successfully." >> "${WORKSPACE}/trigger.log"
+            echo "${RC}" > ${WORKSPACE}/trigger.log.SUCCESS
+        elif [ ${RC} -eq 1 ]; then
+            echo "Job completed with warning." >> "${WORKSPACE}/trigger.log"
+            echo "${RC}" > ${WORKSPACE}/trigger.log.WARNING
+        else
+            echo "Job completed with failure." >> "${WORKSPACE}/trigger.log"
+            echo "${RC}" > ${WORKSPACE}/trigger.log.FAILED
+        fi
+
+        echo "Return Code: $RC" >> "${WORKSPACE}/trigger.log"
+
+        echo "[$(date)] trigger return code is ${RC}"
+    ) &
+
+
     wait;
 
 }
