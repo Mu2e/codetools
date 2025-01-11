@@ -170,6 +170,9 @@ function build_test_report() {
         if [ ${ALLOWED_TO_FAIL} -ne 1 ]; then
             TESTS_FAILED=1
         fi
+    elif [ -f "$WORKSPACE/$i.log.WARNING" ]; then
+        STATUS_temp=":question:"
+        EXTRAINFO="Return Code $(cat $WORKSPACE/$i.log.WARNING)."
     elif [ -f "$WORKSPACE/$i.log.FAILED" ]; then
         STATUS_temp=":x:"
         EXTRAINFO="Return Code $(cat $WORKSPACE/$i.log.FAILED)."
