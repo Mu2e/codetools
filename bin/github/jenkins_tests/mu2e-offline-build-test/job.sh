@@ -18,10 +18,10 @@ else
     declare -a NEVTS_TJ=("10" "10" "1" "1" "1" "1" "10")
 
     # manually defined test names (see build.sh)
-    declare -a ADDITIONAL_JOBNAMES=("ceSteps" "ceDigi" "muDauSteps" "ceMix" "rootOverlaps" "g4surfaceCheck" "trigger")
+    declare -a ADDITIONAL_JOBNAMES=("ceSteps" "ceDigi" "muDauSteps" "ceMix" "rootOverlaps" "g4surfaceCheck" "trigger" "check_cmake")
 
     # tests that are known to be bad
-    declare -a FAIL_OK=( trigger )
+    declare -a FAIL_OK=( trigger check_cmake )
 
     # how many of these tests to run in parallel at once
     export MAX_TEST_PROCESSES=8

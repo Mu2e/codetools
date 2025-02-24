@@ -257,6 +257,30 @@ function do_runstep() {
         echo "[$(date)] trigger return code is ${RC}"
     ) &
 
+    # check cmake file lists agree with repo files
+    (
+        echo "[$(date)] checking check_cmake"
+        (cd ${WORKSPACE}/Offline; bin/check_cmake.sh \
+                     > ${WORKSPACE}/check_cmake.log ) &
+        TESTPID=$!
+
+        babysit_test "check_cmake" "${TESTPID}" # Kills the test after TEST_TIMEOUT seconds
+        wait $TESTPID; # Wait for process to finish
+        RC=$? # grab the return code from the process
+
+        if [ ${RC} -eq 0 ]; then
+            echo "Job completed successfully." >> "${WORKSPACE}/check_cmake.log"
+            echo "${RC}" > ${WORKSPACE}/check_cmake.log.SUCCESS
+        else
+            echo "Job completed with failure." >> "${WORKSPACE}/check_cmake.log"
+            echo "${RC}" > ${WORKSPACE}/check_cmake.log.FAILED
+        fi
+
+        echo "Return Code: $RC" >> "${WORKSPACE}/check_cmake.log"
+
+        echo "[$(date)] check_cmake return code is ${RC}"
+    ) &
+
 
     wait;
 
