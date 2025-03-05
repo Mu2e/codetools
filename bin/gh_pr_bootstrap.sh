@@ -164,6 +164,9 @@ function cmsbot_write_pr_base() {
 
 
 function setup_build_repos() {
+    echo "starting setup_build_repos in $PWD"
+    echo "ls of directory"
+    ls -al
     # setup_build_repos Mu2e/Offline if you are testing Offline
     # setup_build_repos Mu2e/Production if you are testing Production
     export REPO=$(echo $1 | sed 's|^.*/||')
@@ -178,6 +181,8 @@ function setup_build_repos() {
     (
         # clean up any previous builds
         rm -rf $REPO .sconsign.dblite build "${REQUIRED_BUILD_REPOS_SHORT[@]}"
+        # remove the dash version since it conflicts the underscore
+        rm -rf mu2e-trig-config
         # clone all the required repos
         for reqrepo in "${REQUIRED_BUILD_REPOS_SHORT[@]}";
         do
@@ -202,6 +207,9 @@ function setup_build_repos() {
 
         git fetch origin pull/${PULL_REQUEST}/head:pr${PULL_REQUEST}
     )
+    echo "done setup_build_repos in $PWD"
+    echo "ls of directory"
+    ls -al
 
 }
 

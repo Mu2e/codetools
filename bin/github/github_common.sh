@@ -16,6 +16,10 @@ function prepare_repositories() {
     if [ $? -ne 0 ]; then 
         return 1
     fi
+    echo "starting prepare_repositories in $PWD"
+    echo "NO_MERGE=$NO_MERGE"
+    echo "REPO=$REPO"
+    echo "TEST_WITH_PR=$TEST_WITH_PR"
     if [ "${NO_MERGE}" = "1" ]; then
         echo "[$(date)] Mu2e/$REPO - Checking out PR HEAD directly"
         git checkout ${COMMIT_SHA} #"pr${PULL_REQUEST}"
@@ -40,12 +44,19 @@ function prepare_repositories() {
             elif [[ $pr = *\#* ]]; then
                 # get the repository name
                 REPO_NAME=$( echo $pr | awk -F\# '{print $1}' )
+                echo "in second condition of test with"
+                echo "REPO_NAME=$REPO_NAME"
+                if [ "$REPO_NAME" == "mu2e-trig-config" ]; then
+                    echo "adjusting mu2e-trig-config name"
+                    REPO_NAME="mu2e_trig_config"
+                fi
                 THE_PR=$( echo $pr | awk -F\# '{print $2}' )
-
+                echo "THE_PR=$THE_PR"
                 # check it exists, and clone it into the workspace if it does not.
                 if [ ! -d "$WORKSPACE/$REPO_NAME" ]; then
                     (
                         cd $WORKSPACE
+                        echo "cloning test wth $REPO_NAME into $PWD"
                         git clone https://github.com/Mu2e/${REPO_NAME}.git ${REPO_NAME} || exit 1
                     )
                     if [ $? -ne 0 ]; then 
@@ -88,12 +99,14 @@ function prepare_repositories() {
             if [ "$?" -gt 0 ]; then
                 echo "[$(date)] Merge failure!"
                 append_report_row "test with" ":x:" "Mu2e/${REPO_NAME}#${THE_PR} @ ${THE_COMMIT_SHA} merge failed"
+                echo "early return prepare_repositories merge fail 1 in $PWD"
                 return 1
             fi
             CONFLICTS=$(git ls-files -u | wc -l)
             if [ "$CONFLICTS" -gt 0 ] ; then
                 echo "[$(date)] Merge conflicts!"
                 append_report_row "test with" ":x:" "Mu2e/${REPO_NAME}#${THE_PR} @ ${THE_COMMIT_SHA} has conflicts with this PR"
+                echo "early return prepare_repositories conflict 1 in $PWD"
                 return 1
             fi
 
@@ -103,14 +116,15 @@ function prepare_repositories() {
     else
         append_report_row "test with" ":white_check_mark:" "Command did not list any other PRs to include"
     fi
-    
+
     cd ${WORKSPACE}/${REPO}
 
-    if [ "${NO_MERGE}" != "1" ]; then 
+    if [ "${NO_MERGE}" != "1" ]; then
         echo "[$(date)] Merging PR#${PULL_REQUEST} at ${COMMIT_SHA}."
         git merge --no-ff ${COMMIT_SHA} -m "merged ${REPOSITORY} PR#${PULL_REQUEST} ${COMMIT_SHA}."
         if [ "$?" -gt 0 ]; then
             append_report_row "merge" ":x:" "${COMMIT_SHA} into ${MASTER_COMMIT_SHA} merge failed"
+            echo "early return prepare_repositories merge fail 2 in $PWD"
             return 1
         fi
         append_report_row "merge" ":white_check_mark:" "Merged ${COMMIT_SHA} at ${MASTER_COMMIT_SHA}"
@@ -119,9 +133,14 @@ function prepare_repositories() {
         CONFLICTS=$(git ls-files -u | wc -l)
         if [ "$CONFLICTS" -gt 0 ] ; then
             append_report_row "merge" ":x:" "${COMMIT_SHA} has merge conflicts with ${MASTER_COMMIT_SHA} "
+            echo "early return prepare_repositories conflict 2 in $PWD"
             return 1
         fi
     fi
+
+    echo "ls of area"
+    ls -al
+    echo "return prepare_repositories in $PWD"
 
     return 0
 }
