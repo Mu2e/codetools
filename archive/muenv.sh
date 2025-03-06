@@ -66,7 +66,7 @@ if [ ! -f "$ACTIVATE_PATH" ]; then
 fi
 
 # Activate the environment
-echo "Activating Mu2e Python environment: $ENVNAME version $VERSION"
+echo "Activating Mu2e Python environment: $ENVNAME $VERSION"
 source "$ACTIVATE_PATH"
 
 # Setup deactivate 
