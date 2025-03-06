@@ -46,9 +46,9 @@ function prepare_repositories() {
                 REPO_NAME=$( echo $pr | awk -F\# '{print $1}' )
                 echo "in second condition of test with"
                 echo "REPO_NAME=$REPO_NAME"
-                if [ "$REPO_NAME" == "mu2e-trig-config" ]; then
-                    echo "adjusting mu2e-trig-config name"
-                    REPO_NAME="mu2e_trig_config"
+                if [ "$REPO_NAME" == "mu2e_trig_config" ]; then
+                    echo "adjusting mu2e_trig_config name"
+                    REPO_NAME="mu2e-trig-config"
                 fi
                 THE_PR=$( echo $pr | awk -F\# '{print $2}' )
                 echo "THE_PR=$THE_PR"

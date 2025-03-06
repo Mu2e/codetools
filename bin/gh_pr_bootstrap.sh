@@ -8,7 +8,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 export JENKINS_TESTS_DIR="$DIR/github/jenkins_tests"
 export CLANGTOOLS_UTIL_DIR="$DIR/../clangtools_utilities"
 export TESTSCRIPT_DIR="$JENKINS_TESTS_DIR/$1"
-export REQUIRED_BUILD_REPOS_SHORT=("Offline" "Production" "mu2e_trig_config")
+export REQUIRED_BUILD_REPOS_SHORT=("Offline" "Production" "mu2e-trig-config")
 export GH_COMMON_SCRIPT="$DIR/github/github_common.sh"
 
 # if the PR is trying to merge into this branch, make sure all other repos
@@ -181,8 +181,8 @@ function setup_build_repos() {
     (
         # clean up any previous builds
         rm -rf $REPO .sconsign.dblite build "${REQUIRED_BUILD_REPOS_SHORT[@]}"
-        # remove the dash version since it conflicts the underscore
-        rm -rf mu2e-trig-config
+        # remove the underscore version since it conflicts the dashed
+        rm -rf mu2e_trig_config
         # clone all the required repos
         for reqrepo in "${REQUIRED_BUILD_REPOS_SHORT[@]}";
         do
