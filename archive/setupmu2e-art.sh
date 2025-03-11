@@ -82,3 +82,8 @@ export JOBSUB_GROUP=mu2e
 
 # make sure the default man paths are included (path starts with ":")
 [ "${MANPATH:0:1}" != ":" ] && export MANPATH=":"$MANPATH
+
+# Function for Python environment activatation 
+muenv() {
+  source muenv.sh
+}
