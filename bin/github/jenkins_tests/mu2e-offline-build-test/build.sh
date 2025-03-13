@@ -236,7 +236,7 @@ function do_runstep() {
     # check trigger results against a standard log file in the mtc repo
     (
         echo "[$(date)] checking trigger exe result"
-        ${WORKSPACE}/mu2e_trig_config/ci/check_trigger_results.sh \
+        ${WORKSPACE}/mu2e-trig-config/ci/check_trigger_results.sh \
                      > ${WORKSPACE}/trigger.log &
         TESTPID=$!
 
