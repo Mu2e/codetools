@@ -85,5 +85,5 @@ export JOBSUB_GROUP=mu2e
 
 # Function for Python environment activatation 
 muenv() {
-  source muenv.sh
+  source "/cvmfs/mu2e.opensciencegrid.org/bin/pyenv.sh"
 }

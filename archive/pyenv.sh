@@ -3,7 +3,7 @@
 # Script to activate a Mu2e Python environment from /cvfms 
 #
 
-muenvUsage() {
+pyenvUsage() {
     cat << EOF
 
     Usage: muse activate ENV_NAME [VERSION]
@@ -19,8 +19,8 @@ muenvUsage() {
       VERSION  - Optional: Environment version (default: 'current')
     
     Examples:
-      muenv ana
-      muenv rootana 1.2.0
+      pyenv ana
+      pyenv rootana 1.2.0
       
     The first example runs:
       source /cvmfs/mu2e.opensciencegrid.org/env/ana/current/bin/activate
@@ -36,9 +36,12 @@ EOF
 
 # Show usage information if -h or no args
 if [[ "$1" == "-h" || "$1" == "--help" || "$1" == "help" || $# -eq 0 ]]; then
-    muenvUsage
+    pyenvUsage
     return 0
 fi
+
+# Unset the help function 
+unset -f pyenvUsage 
 
 # Parse command line arguments
 ENVNAME=""
@@ -54,9 +57,9 @@ ACTIVATE_PATH="${SCRIPT_PATH}/activate"
 DEACTIVATE_PATH="${SCRIPT_PATH}/deactivate"
 
 # Export variables so they're available to child processes (deactivate)
-export MUENV_NAME="$ENVNAME"
-export MUENV_VERSION="$VERSION"
-export MUENV_SCRIPT_PATH="$SCRIPT_PATH"
+export pyenv_NAME="$ENVNAME"
+export pyenv_VERSION="$VERSION"
+export pyenv_SCRIPT_PATH="$SCRIPT_PATH"
 
 # Check if the activate script exists
 if [ ! -f "$ACTIVATE_PATH" ]; then
@@ -82,9 +85,9 @@ deactivate() {
     fi
     
     # Unset environment variables
-    unset MUENV_NAME
-    unset MUENV_VERSION
-    unset MUENV_SCRIPT_PATH
+    unset pyenv_NAME
+    unset pyenv_VERSION
+    unset pyenv_SCRIPT_PATH
     
     # Unset this function
     unset -f deactivate
