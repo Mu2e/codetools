@@ -84,6 +84,6 @@ export JOBSUB_GROUP=mu2e
 [ "${MANPATH:0:1}" != ":" ] && export MANPATH=":"$MANPATH
 
 # Function for Python environment activatation 
-muenv() {
+pyenv() {
   source "/cvmfs/mu2e.opensciencegrid.org/bin/pyenv.sh"
 }
