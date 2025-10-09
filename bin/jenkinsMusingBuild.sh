@@ -27,8 +27,6 @@ NCPU=$(cat /proc/cpuinfo | grep -c processor)
 echo "[`date`] initial setup"
 source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
 [ $? -ne 0 ] && exit 1
-setup muse
-[ $? -ne 0 ] && exit 1
 
 echo "[`date`] printenv after setup"
 printenv
