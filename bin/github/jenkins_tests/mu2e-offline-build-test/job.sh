@@ -20,12 +20,12 @@ else
     # manually defined test names (see build.sh)
     declare -a ADDITIONAL_JOBNAMES=("ceSteps" "ceDigi" "muDauSteps" "ceMix" "rootOverlaps" "g4surfaceCheck" "trigger" "check_cmake")
 
-    # tests that are known to be bad
-    declare -a FAIL_OK=( trigger check_cmake )
+    # tests where failing should not block the merge
+    declare -a FAIL_OK=( trigger )
 
     # how many of these tests to run in parallel at once
     export MAX_TEST_PROCESSES=8
-    
+
     export JOBNAMES
     export FCLFILES
     export NEVTS_TJ
@@ -121,7 +121,7 @@ if [ $root_branch ]; then
     if [ $TD_FIXM_COUNT == 0 ]; then
         TD_FIXM_STATUS=":white_check_mark:"
     else
-        TD_FIXM_STATUS=":large_orange_diamond:"
+        TD_FIXM_STATUS=":arrow_right:"
     fi
 
     echo "[$(date)] whitespace check before merge"
@@ -134,7 +134,7 @@ if [ $root_branch ]; then
         WS_STAT_STRING="no whitespace errors found"
         echo "${WS_STAT_STRING}" >> $WORKSPACE/whitespace_errs.log
     else
-        WS_STATUS=":large_orange_diamond:"
+        WS_STATUS=":arrow_right:"
         WS_STAT_STRING="found whitespace errors"
     fi
 else
@@ -223,11 +223,11 @@ else
 fi
 
 if grep -q warning: "$WORKSPACE/clang-tidy.log"; then
-    CT_STATUS=":large_orange_diamond:"
+    CT_STATUS=":arrow_right:"
 fi
 
 if grep -q error: "$WORKSPACE/clang-tidy.log"; then
-    CT_STATUS=":large_orange_diamond:"
+    CT_STATUS=":arrow_right:"
 fi
 
 CT_ERROR_COUNT=$(grep -c error: "$WORKSPACE/clang-tidy.log")
@@ -287,7 +287,7 @@ do
     build_test_report $i
 done
 for i in "${ADDITIONAL_JOBNAMES[@]}"
-do 
+do
     build_test_report $i
 done
 
