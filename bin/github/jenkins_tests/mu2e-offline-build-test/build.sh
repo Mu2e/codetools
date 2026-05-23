@@ -164,7 +164,7 @@ function do_runstep() {
       fi
       
       TEST_MSG_GS="mu2e -n ${NEV} -c Production/Validation/${FCL}.fcl finished with return code ${RC}"
-      TEST_URL_GS="${JOB_URL}/${BUILD_NUMBER}/artifact/${JOBNAME}.log"
+      TEST_URL_GS="${JOB_URL}/${BUILD_NUMBER}/artifact/${FCL}.log"
 
       echo "Return Code: $RC" >> "${WORKSPACE}/${FCL}.log"
 
