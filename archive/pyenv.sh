@@ -3,9 +3,9 @@
 pyenvUsage() {
     cat << EOF
 
-    Usage: muse activate ENV_NAME
+    Usage: muse activate ENV_NAME [VERSION]
 
-    Activates a Mu2e Python environment (Pixi Pack Native).
+    Activates a Mu2e Python environment (Supports Pixi and Conda builds).
     
     Available environments:
       • ana     - Standard analysis environment
@@ -13,10 +13,12 @@ pyenvUsage() {
     
     Parameters:
       ENV_NAME - Required: Environment name ('ana' or 'rootana')
+      VERSION  - Optional: Environment version (default: '2.7.0')
     
     Examples:
       pyenv ana
-      pyenv rootana
+      pyenv ana 2.1.0
+      pyenv rootana current
 
     See https://mu2ewiki.fnal.gov/wiki/Elastic_Analysis_Facility_(EAF)#Change_log for version info 
 
@@ -35,20 +37,21 @@ unset -f pyenvUsage
 
 # Parse command line arguments
 ENVNAME=$1
-VERSION="2.7.0"  # Explicitly locked to version 2.7.0
+VERSION=${2:-2.7.0}  # Defaults to 2.7.0 if the user doesn't specify a version
 
 # ---------------------------------------------------------------------
 # SAFE CVMFS FALLBACK CHECK
 # ---------------------------------------------------------------------
-# If MU2E is empty/unset, default to the standard Open Science Grid mount point
 if [ -z "$MU2E" ]; then
     export MU2E="/cvmfs/mu2e.opensciencegrid.org"
 fi
 
-# Define the absolute target directory on CVMFS
+# Define paths
 CONDA_PREFIX="${MU2E}/env/${ENVNAME}/${VERSION}"
+ACTIVATE_PATH="${CONDA_PREFIX}/bin/activate"
+DEACTIVATE_PATH="${CONDA_PREFIX}/bin/deactivate"
 
-# Verify the environment actually exists before attempting to load it
+# Verify the environment directory actually exists
 if [ ! -d "$CONDA_PREFIX" ]; then
     echo "ERROR - Mu2e Python environment directory not found!"
     echo "Path: $CONDA_PREFIX"
@@ -59,7 +62,17 @@ export pyenv_NAME="$ENVNAME"
 export pyenv_VERSION="$VERSION"
 export CONDA_PREFIX="$CONDA_PREFIX"
 
-echo "Activating Mu2e Python environment: $ENVNAME $VERSION (Pixi-Pack layout)"
+# ---------------------------------------------------------------------
+# HYBRID ACTIVATION CHECK
+# ---------------------------------------------------------------------
+if [ -f "$ACTIVATE_PATH" ]; then
+    echo "Activating Mu2e Python environment: $ENVNAME $VERSION (Legacy Conda build)"
+    source "$ACTIVATE_PATH"
+else
+    echo "Activating Mu2e Python environment: $ENVNAME $VERSION (Pixi-Pack build)"
+    # Pixi needs its bin path manually prioritized right away
+    export PATH="$CONDA_PREFIX/bin:$PATH"
+fi
 
 # =====================================================================
 # INTEGRATED PATH CLEANING & COMMAND PROTECTION
@@ -116,14 +129,21 @@ export -f setup_mu2e_python_env
 
 # Setup deactivate function safely
 deactivate() {
-    # Since there's no CVMFS script to undo changes, we strip out the paths manually
-    PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "$CONDA_PREFIX" | tr '\n' ':' | sed 's/:$//')
-    PYTHONPATH=$(echo "$PYTHONPATH" | tr ':' '\n' | grep -v "$CONDA_PREFIX" | tr '\n' ':' | sed 's/:$//')
-    JUPYTER_PATH=$(echo "$JUPYTER_PATH" | tr ':' '\n' | grep -v "$CONDA_PREFIX" | tr '\n' ':' | sed 's/:$//')
-    LD_LIBRARY_PATH=$(echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep -v "$CONDA_PREFIX" | tr '\n' ':' | sed 's/:$//')
+    # If a native Conda deactivate tracker file exists, run it
+    if [ -f "$DEACTIVATE_PATH" ]; then
+        source "$DEACTIVATE_PATH"
+    else
+        # Fall back to manual path stripping for Pixi environments
+        PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "$CONDA_PREFIX" | tr '\n' ':' | sed 's/:$//')
+        PYTHONPATH=$(echo "$PYTHONPATH" | tr ':' '\n' | grep -v "$CONDA_PREFIX" | tr '\n' ':' | sed 's/:$//')
+        JUPYTER_PATH=$(echo "$JUPYTER_PATH" | tr ':' '\n' | grep -v "$CONDA_PREFIX" | tr '\n' ':' | sed 's/:$//')
+        LD_LIBRARY_PATH=$(echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep -v "$CONDA_PREFIX" | tr '\n' ':' | sed 's/:$//')
+        export PATH PYTHONPATH JUPYTER_PATH LD_LIBRARY_PATH
+        
+        if type conda_deactivate >/dev/null 2>&1; then conda_deactivate; fi
+        if type python_deactivate >/dev/null 2>&1; then python_deactivate; fi
+    fi
     
-    export PATH PYTHONPATH JUPYTER_PATH LD_LIBRARY_PATH
-
     # Tear down function wrappers completely to restore clean system shell state
     for cmd in python pip jupyter conda mamba; do
         unset -f "$cmd"
