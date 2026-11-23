@@ -1,0 +1,292 @@
+#! /bin/bash
+#
+#
+
+
+usage() {
+    cat << EOM
+
+  test for known potential issues with raw files
+  print message on an issue
+  will attempt all tests and sum return codes for exit code
+  best to setup an Offline before running, but can use -s
+
+  -v more verbose
+  -s setup Offline too
+  -1 skip check on repeated subruns
+  -2 skip check on rootfiledb
+  -3 skip check on compact subruns (slowest)
+  -4 skip check on missing subruns
+  -5 skip check on FileIndex counts
+  -6 skip check on event ranges
+  positional args = filespecs
+
+EOM
+}
+
+#
+#
+#
+check_setup() {
+    if [[ "$DO_SETUP" && ! "$MUSE_WORK_DIR" ]]; then
+        source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh || return 1
+        muse setup SimJob || return 1
+    fi
+    if ! command -v mu2e >& /dev/null ; then
+        echo "ERROR - no Offline setup"
+        return 1
+    fi
+    [ $VERBOSE ] && echo "[$(date)] done setups"
+    return 0
+}
+
+#
+#
+#
+repeated_subruns() {
+    [ "$SKIP_SUBRUNS" ] && return 0
+    [ $VERBOSE ] && echo "[$(date)] starting repeated subrun"
+    local RC=0
+    local TMP=$(mktemp)
+    file_info_dumper --event-list $FS | grep -v File | awk '{if(NF==2) print $0}' | sort | uniq -c | awk '{if($1!=1) print $0}' > $TMP
+    NBAD=$(cat $TMP | wc -l)
+    if [[ $NBAD -ne 0 ]]; then
+        echo "ERROR RepeatedSubRuns=$NBAD   $FN"
+        cat $TMP
+        RC=1
+    fi
+    rm -f $TMP
+    [ $VERBOSE ] && echo "[$(date)] finished repeated subruns, RC=$RC"
+    return $RC
+}
+
+#
+#
+#
+rootfiledb() {
+    [ "$SKIP_ROOTDB" ] && return 0
+    [ $VERBOSE ] && echo "[$(date)] starting rootfiledb"
+    local RC=0
+    local FSIZE=$(stat -c %s $FS)
+    local LIM=0.05
+    [ $FSIZE -lt 100000000 ] && LIM=0.1
+    [ $FSIZE -lt  10000000 ] && LIM=0.2
+    [ $FSIZE -lt   1000000 ] && LIM=1.0
+    RFDBF=$( artProductSizes $FS | grep RootFileDB | awk '{print $(NF-1)}' )
+    RFDB=$( echo $RFDBF | awk -v lim=$LIM \
+                     '{if($1<lim) print "OK"; else print "BAD";}' )
+    if [ "$RFDB" == "BAD" ]; then
+        echo "ERROR LargeRootFileDB=$RFDBF   $FN"
+        RC=1
+    fi
+    [ $VERBOSE ] && echo "[$(date)] finished rootfiledb, RC=$RC"
+    return $RC
+}
+
+#
+#
+#
+# test if compact run ranges works
+# failure means chunks of events were processed differently
+compact_run_ranges() {
+    [ "$SKIP_COMPACT" ] && return 0
+    [ $VERBOSE ] && echo "[$(date)] starting compact run ranges"
+    local RC=0
+    local TMP=$(mktemp)
+    local TMPF=$(mktemp)
+    echo "source: { module_type: RootInput }" > $TMPF
+    echo "source.compactEventRanges: true" >> $TMPF
+    mu2e -c $TMPF -s $FS >& $TMP
+    RC=$?
+    if [[ $RC -ne 0 ]]; then
+        echo "ERROR CompactRunRangesFailed   $FN"
+        #cat $TMP
+        cat $TMP | awk 'BEGIN{flag=0}{
+          if(index($0,"MSG")>0 && flag==1) flag=2;
+          if(flag==1) print $0;
+          if(index($0,"ArtException")>0 && flag==0) flag=1; }'
+    fi
+    rm -f $TMP $TMPF
+    [ $VERBOSE ] && echo "[$(date)] finished compact run ranges, RC=$RC"
+    return $RC
+}
+
+#
+#
+#
+# test if there are no subrun records
+#
+no_subruns() {
+    [ "$SKIP_MISSING" ] && return 0
+    [ $VERBOSE ] && echo "[$(date)] starting missing run ranges"
+    local RC=0
+    NSR=$(count_events $FS | head -1 | awk '{print $3}')
+    if [[ $NSR -eq 0 ]]; then
+        echo "ERROR NoSubRunRecords  $FN"
+        RC=1
+    fi
+    [ $VERBOSE ] && echo "[$(date)] finished missing run ranges, RC=$RC"
+    return $RC
+}
+
+fileindex() {
+    [ "$SKIP_FILEINDEX" ] && return 0
+    [ $VERBOSE ] && echo "[$(date)] starting FileIndex check"
+    local RC=0
+    # Keep only the rows of the leading summary table: 5 fields with a
+    # numeric first field.  Further down artProductSizes prints a
+    # "Details for branch: <tree>" header for every tree holding more than
+    # 0.05 of the file, and the last field of that header is also a tree
+    # name.  Matching those gave "$3" = "branch:" and a "too many arguments"
+    # failure on files whose FileIndex is a big fraction of a small file.
+    local APS=$( artProductSizes $FS 2>/dev/null | awk 'NF==5 && $1+0==$1' )
+    local NE=$(echo "$APS" | awk '{if($NF=="Events") print $3}')
+    local NS=$(echo "$APS" | awk '{if($NF=="SubRuns") print $3}')
+    local NR=$(echo "$APS" | awk '{if($NF=="Runs") print $3}')
+    local NFI=$(echo "$APS" | awk '{if($NF=="FileIndex") print $3}')
+    [ $VERBOSE ] && echo "[$(date)] events=$NE subruns=$NS runs=$NR fileindex=$NFI"
+    if [[ "$NE" == "" || "$NS" == "" || "$NR" == "" || "$NFI" == "" ]]; then
+        echo "ERROR FileIndex could not be checked  $FN"
+        RC=1
+    else
+        local NTOT=$((NE+NS+NR))
+        if [ "$NTOT" -ne "$NFI" ]; then
+            echo "ERROR FileIndex does not add up events=$NE subruns=$NS runs=$NR sum=$NTOT fileindex=$NFI  $FN"
+            RC=1
+        fi
+    fi
+    [ $VERBOSE ] && echo "[$(date)] finished FileIndex check, RC=$RC"
+    return $RC
+
+}
+
+#
+#
+#
+# test that the event ranges in the RootFileDB actually span the events
+# in the file
+#
+# A RangeSet has to be a superset of the events present.  It is allowed to be
+# wider: a sim subrun normally declares [1,500001) and keeps far fewer events,
+# and that is fine.  It is also allowed to be one range per event, which is
+# what the data logger writes when event numbers are not contiguous.  What is
+# not allowed is a RangeSet narrower than the events it is supposed to cover,
+# which is what we see when the writer starts the range on the first event and
+# then never extends it.
+#
+# Three aggregates are enough, so there is no loop over events:
+#   total width of all ranges  must be >= the event count
+#   lowest  range begin        must be <= first_event
+#   highest range end          must be >  last_event
+# first_event/last_event come from the SAM metadata.  They are event numbers
+# that really are in the file (for some writers they are the first and last
+# written rather than the lowest and highest), so a correct RangeSet has to
+# bracket both of them whichever they are.  That makes all three tests
+# necessary conditions, so none of them can cry wolf.  They are not
+# sufficient - probe_art_file.py does the exact per-event containment test.
+event_ranges() {
+    [ "$SKIP_RANGES" ] && return 0
+    [ $VERBOSE ] && echo "[$(date)] starting event ranges"
+    local RC=0
+    local NEV=$(count_events $FS 2>/dev/null | head -1 | awk '{print $4}')
+    local SMD=$(sam_metadata_dumper $FS 2>/dev/null)
+    local EV1=$(echo "$SMD" | awk -F'[^0-9]+' '/"first_event"/{print $2}')
+    local EV2=$(echo "$SMD" | awk -F'[^0-9]+' '/"last_event"/{print $2}')
+    # keep stderr: that is where the EventRangeOverlap complaint comes out
+    local ROV=$(file_info_dumper --range-of-validity=full $FS 2>&1)
+    # every range prints as [begin,end).  art's [0,4294967295) is the
+    # "whole subRun" sentinel, so count it as covering everything.
+    local AGG=$(echo "$ROV" | grep -o '\[[0-9]*,[0-9]*)' | tr -d '[)' \
+        | awk -F, -v nev="$NEV" '
+            { n++
+              if($2>=4294967295) w+=nev; else w+=$2-$1
+              if(lo==""||$1<lo) lo=$1
+              if(hi==""||$2>hi) hi=$2 }
+            END{ printf "%d %.0f %d %d", n+0, w+0, lo+0, hi+0 }')
+    local NR COV LO HI
+    read NR COV LO HI <<< "$AGG"
+    local NOV=$(echo "$ROV" | grep -c EventRangeOverlap)
+
+    if [[ -z "$NEV" || -z "$EV1" || -z "$EV2" || -z "$COV" ]]; then
+        echo "ERROR EventRanges could not be checked  $FN"
+        RC=1
+    elif [[ $NOV -ne 0 ]]; then
+        echo "ERROR EventRangesOverlap  $FN"
+        echo "$ROV" | grep -A3 'EventRangeOverlap BEGIN'
+        RC=1
+    elif [[ $NR -eq 0 ]]; then
+        echo "ERROR EventRangesMissing events=$NEV  $FN"
+        RC=1
+    else
+        if [[ $COV -lt $NEV ]]; then
+            echo "ERROR EventRangesTooNarrow covered=$COV events=$NEV nranges=$NR  $FN"
+            RC=1
+        fi
+        if [[ $LO -gt $EV1 ]]; then
+            echo "ERROR EventRangesStartTooHigh begin=$LO first_event=$EV1  $FN"
+            RC=1
+        fi
+        if [[ $HI -le $EV2 ]]; then
+            echo "ERROR EventRangesEndTooLow end=$HI last_event=$EV2  $FN"
+            RC=1
+        fi
+    fi
+    [ $VERBOSE ] && echo "[$(date)] ranges=$NR covered=$COV minbegin=$LO maxend=$HI events=$NEV first=$EV1 last=$EV2"
+    [ $VERBOSE ] && echo "[$(date)] finished event ranges, RC=$RC"
+    return $RC
+}
+
+#
+#   main
+#
+
+DO_HELP=
+VERBOSE=
+DO_SETUP=
+SKIP_SUBRUNS=
+SKIP_ROOTDB=
+SKIP_COMPACT=
+SKIP_MISSING=
+SKIP_FILEINDEX=
+SKIP_RANGES=
+
+while getopts hvs123456 OPTION ; do
+    #echo "option=$OPTION"
+    case $OPTION in
+        h) usage; exit 0 ;;
+        v) VERBOSE=yes ;;
+        s) DO_SETUP=1 ;;
+        1) SKIP_SUBRUNS=T ;;
+        2) SKIP_ROOTDB=T ;;
+        3) SKIP_COMPACT=T ;;
+        4) SKIP_MISSING=T ;;
+        5) SKIP_FILEINDEX=T ;;
+        6) SKIP_RANGES=T ;;
+        *) echo "Unknown switch $OPTION" ; exit 1 ;;
+    esac
+done
+shift $(expr $OPTIND - 1 )
+FSS="$@"
+
+RCT=0
+check_setup || exit 1
+
+for FS in $FSS
+do
+    FN=$(basename $FS)
+    [ $VERBOSE ] && echo -e "\n*********** Checking $FN"
+    repeated_subruns
+    RCT=$((RCT+$?))
+    rootfiledb
+    RCT=$((RCT+$?))
+    compact_run_ranges
+    RCT=$((RCT+$?))
+    no_subruns
+    RCT=$((RCT+$?))
+    fileindex
+    RCT=$((RCT+$?))
+    event_ranges
+    RCT=$((RCT+$?))
+done
+
+exit $RCT

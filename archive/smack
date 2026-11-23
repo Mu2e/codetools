@@ -8,12 +8,14 @@ cat << EOF
   status
   subspack DIR - make subspack with cvmfs upstream
   subspack2 DIR - make subspack with cvmfs/packages2 upstream
-  subenv OLDENV (on cvmfs) NEWENV (in current subspack)
+  subspack2 DIR - make subspack with current cvmfs/spackages upstream
+  subenv NEWENV (in current subspack) OLDENV (on cvmfs)
       old install should be setup
   synccache - writes sync.sh and cvmsfs.h to move local install through cache
   pushcache - copy ./bc to mu2e mirror
   installmu - copy scisoft mu manifest spack lock and yaml and install packages
       ARGS: spack.yaml spack.lock (url or filespec) new env name
+  version - print version number
 EOF
 }
 
@@ -59,7 +61,7 @@ subspack() {
 
   cd $DDIR || return 1
 
-  rsync -rl /exp/mu2e/app/users/rlc/spack/spack_template/ .
+  rsync -rl /cvmfs/mu2e.opensciencegrid.org/DataFiles/spack/spack_template/ .
 
   cd spack/var/spack/repos || return 1
   RLIST="scd_recipes artdaq-spack local"
@@ -234,6 +236,104 @@ EOF
 
 }
 
+# make a local subspack with the standard location upstream
+# there should be one argument which is a path to the new install
+subspack3() {
+  local VV=true
+  local DDIR=$(readlink -f $1)
+  if [ ! "$DDIR" ]; then
+    echo "No new directory argument is given"
+    usage
+    return 22
+  fi
+  if [ ! "$SPACK_ROOT" ]; then
+    echo "No spack is setup"
+    usage
+    return 1
+  fi
+
+  echo "making subspack dir"
+  if ! mkdir -p $DDIR ; then
+    echo "Could not make new subspack directory $DDIR"
+    return 1
+  fi
+
+  local ODIR=$PWD
+
+  cd $DDIR || return 1
+
+  # try to get by without tmp!!
+
+  echo "create setup-env.sh"
+  cat << EOF > setup-env.sh
+export SPACK_SKIP_MODULES=true
+export SPACK_DISABLE_LOCAL_CONFIG=true
+export SPACK_INSTALL=\$(dirname \$(readlink -f \$BASH_SOURCE))
+export SPACK_LOCAL=\$(echo \$SPACK_INSTALL/spack/opt/spack/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__/__spack_path_placeholder__ | cut -c -255)
+source \$SPACK_INSTALL/spack/share/spack/setup-env.sh
+EOF
+
+  echo "create spack dir"
+  mkdir spack
+  cd spack
+  #the location of bin determines the config paths!
+  rsync -rl $SPACK_ROOT/bin .
+  rsync -rl $SPACK_ROOT/lib .
+  #rsync -rl $SPACK_ROOT/opt .
+  rsync -rl $SPACK_ROOT/share .
+
+  rsync -rl $SPACK_ROOT/etc .
+
+  if [ -f etc/spack/upstreams_subspack.yaml ]; then
+      echo "create upstreams.yaml from upstreams_subspack.yaml"
+      mv etc/spack/upstreams_subspack.yaml etc/spack/upstreams.yaml
+  else
+      echo "create upstreams.yaml"
+      cat << EOF > etc/spack/upstreams.yaml
+   upstreams:
+    spack-instance-1:
+      install_tree: $SPACK_INSTALL
+EOF
+  fi
+
+  mkdir -p var/spack
+  ln -s $SPACK_ROOT/var/spack/extensions var/spack/extensions
+
+  echo "create local recipe repos"
+  # full list of repos will be reconstructed, remove old list
+  cd $DDIR || return 1
+  find spack/etc/spack -name "repos.yaml" -delete
+
+  cd $DDIR || return 1
+  mkdir -p spack/var/spack/repos
+  cd spack/var/spack/repos || exit 1
+  LINK_REPOS="builtin fnal_art artdaq-spack scd_recipes"
+  LOCAL_REPOS="mu2e-spack"
+  for RR in $LINK_REPOS
+  do
+      echo "  linking $RR"
+      ln -s $SPACK_ROOT/var/spack/repos/$RR
+  done
+  #
+  for RR in $LOCAL_REPOS
+  do
+      echo "  making local $RR"
+      rsync -rq $SPACK_ROOT/var/spack/repos/$RR .
+  done
+
+  (
+      source $DDIR/setup-env.sh
+      for RR in $LINK_REPOS $LOCAL_REPOS
+      do
+          spack repo add $DDIR/spack/var/spack/repos/$RR
+      done
+      spack repo list
+
+      echo "add padding to config.yaml"
+      spack config add "config:install_tree:padded_length:255"
+  )
+}
+
 
 # make a new env from spack.lock of another env
 # there should be one argument which is a path to the new install
@@ -257,7 +357,7 @@ subenv() {
   if [ ! "$OENV" ]; then
       # attempt to get the current env based on muse current
       ODIR=$(
-         if muse setup Offline 2>&1 > /dev/null ; then
+         if muse setup 2>&1 > /dev/null ; then
              echo $SPACK_ENV
          fi
       )
@@ -301,7 +401,7 @@ subenv() {
 # assuming a subspack is setup, look into the local install dir and produce
 # two files sync.sh (top copy install into buildcache) and cvmfs.sh
 # to run on cvmfs to install from buildcache
-synccache() {
+synccache_oldversion() {
 
     if [ ! "$SPACK_LOCAL" ]; then
         echo SPACK_LOCAL is not set
@@ -335,10 +435,40 @@ synccache() {
     return 0
 }
 
+# assuming a subspack is setup, look into the local install dir and produce
+# two files sync.sh (top copy install into buildcache) and cvmfs.sh
+# to run on cvmfs to install from buildcache
+synccache() {
+
+    if [ ! "$SPACK_LOCAL" ]; then
+        echo SPACK_LOCAL is not set
+        return 1
+    fi
+    PKGS=$(spack find -lvp | grep path_placeholder | tr "@" " " | awk '{print $2"/"$1}')
+
+    NP=$(echo $PKGS | wc -w)
+    echo "writing sync.sh and cvmfs.sh to sync $NP packages"
+
+    rm -f sync.sh
+    touch sync.sh
+    chmod a+x sync.sh
+    rm -f cvmfs.sh
+    touch cvmfs.sh
+    chmod a+x cvmfs.sh
+
+    for PKG in $PKGS
+    do
+        echo "spack buildcache create -k \$MYKEY --only package ./bc $PKG" >> sync.sh
+        echo "spack install --cache-only $PKG" >> cvmfs.sh
+    done
+
+    return 0
+}
+
 # push buildcache ./bc to mu2e cache in scisoft
 pushcache() {
     if [ ! -d ./bc ]; then
-        echo "buildcache ./bs not found"
+        echo "buildcache ./bc not found"
         return 1
     fi
     echo "Updating local index"
@@ -431,10 +561,12 @@ case $COMMAND in
   status) sstatus "$@" ;;
   subspack) subspack "$@" ;;
   subspack2) subspack2 "$@" ;;
+  subspack3) subspack3 "$@" ;;
   subenv) subenv "$@" ;;
   synccache) synccache "$@" ;;
   pushcache) pushcache "$@" ;;
   installmu) installmu "$@" ;;
+  version) echo 1 ;;
   "") echo -e "\n No command given\n";
       usage;;
   *)  echo -e "\n Unknown command \"$COMMAND\"\n";

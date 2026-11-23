@@ -1,0 +1,166 @@
+#! /bin/bash
+usage() {
+cat << EOF
+
+  pickEvent DATASET EVENTSPEC
+
+  Find the file in this dataset which this event belongs to.
+
+  DATASET: dataset name
+  EVENTSPEC: run/subrun/event (better) or run/event
+
+  -e also strip event to a file in the local dir
+  -v verbose
+  -h print help
+
+EOF
+}
+
+
+setupToolsSam() {
+    [ ! "$MU2E" ] && source /cvmfs/mu2e.opensciencegrid.org/setupmu2e-art.sh
+    ! command -v samweb >& /dev/null && muse setup ops
+    if ! command -v samweb >& /dev/null ; then
+        echo "setups failed"
+        exit 1
+    fi
+    return 0
+}
+
+parseRSE() {
+    RUN=$(echo $ESA | awk -F/ '{print $1}')
+    ARG2=$(echo $ESA | awk -F/ '{print $2}')
+    ARG3=$(echo $ESA | awk -F/ '{print $3}')
+    if [ "$ARG3" ]; then
+        SUBRUN=$ARG2
+        EVENT=$ARG3
+    else
+        SUBRUN=
+        EVENT=$ARG2
+    fi
+    if [ "$VERBOSE" ]; then
+        echo "  RUN=$RUN"
+        echo "  SUBRUN=$SUBRUN"
+        echo "  EVENT=$EVENT"
+    fi
+    if [ -z "$RUN" ]; then
+        echo "no run number"
+        exit 1
+    fi
+    if [ -z "$EVENT" ]; then
+        echo "no event number"
+        exit 1
+    fi
+    return 0
+}
+
+findFileSam() {
+    if [ "$SUBRUN" ]; then
+        COMMAND="defname:$DSA and run_number=${RUN}.${SUBRUN}"
+    else
+        COMMAND="defname:$DSA and dh.first_run_event<=$RUN and dh.first_event<=$EVENT and dh.last_run_event>=$RUN and dh.last_event>=$EVENT"
+    fi
+    if [ "$VERBOSE" ]; then
+        echo "command: $COMMAND"
+    fi
+    FILES=$( samweb list-files "$COMMAND" )
+    RC=$?
+    if [ $RC -ne 0 ]; then
+        echo "samweb command to find files failed"
+        [ -z "$VERBOSE" ] && echo "command was $COMMAND"
+        exit 1
+    fi
+
+    NFILES=0
+    [ "$FILES" ] && NFILES=$(echo "$FILES" | wc -l)
+    if [ "$VERBOSE" ]; then
+        echo "NFILES = $NFILES"
+    fi
+    if [ $NFILES -eq 0 ]; then
+        echo "No files found"
+        exit 1
+    fi
+    if [ "$VERBOSE" ]; then
+        echo "FILES = $FILES"
+    fi
+    return 0
+}
+
+stripEvent() {
+    [ -z "$STRIP" ] && return 0
+    if [ -z "$SUBRUN" ]; then
+        echo "Can only strip event when subrun is known"
+        exit 1
+    fi
+    ! command -v mu2e >& /dev/null && muse setup SimJob
+
+    ARGS=""
+    for FF in $FILES
+    do
+        XFFS=$(samweb list-file-locations --schema=root --dim="file_name=$FF" | awk '{print $1}')
+        XFF=$(echo "$XFFS" | grep persistent)
+        [ -z "$XFF" ] && XFF=$(echo "$XFFS" | grep tape)
+        if [ -z "$XFF" ]; then
+            echo "file had no locations: $FF"
+            exit 1
+        fi
+        ARGS="$ARGS -s $XFF"
+    done
+    ARGS=" $ARGS --estart ${RUN}:${SUBRUN}:${EVENT} -n 1"
+    OUTFILE="${DSA}_${RUN}_${SUBRUN}_${EVENT}.art"
+    ARGS="$ARGS -c /dev/null -o $OUTFILE"
+    if [ "$VERBOSE" ]; then
+        echo "commmand: mu2e $ARGS"
+    fi
+    mu2e $ARGS
+    RC=$?
+    if [ $RC -ne 0 ]; then
+        echo "strip event failed"
+        exit 1
+    fi
+}
+
+#
+#  main
+#
+
+DSA=""
+ESA=""
+STRIP=""
+VERBOSE=""
+
+while getopts evh OPTION ; do
+#    echo "option=$OPTION"
+    case $OPTION in
+        e) STRIP=true ;;
+	v) VERBOSE=true ;;
+        h) usage; exit 0 ;;
+        *) echo "unknown switch $OPTION" ; exit 1 ;;
+    esac
+done
+# shift away the switches to get remainder
+shift $(expr $OPTIND - 1 )
+PARS="$@"
+DSA=$(echo $PARS | awk '{print $1}')
+ESA=$(echo $PARS | awk '{print $2}')
+
+if [ "$VERBOSE" ]; then
+   echo "DATASET = $DSA"
+   echo "EVENTSPEC = $ESA"
+fi
+
+setupToolsSam
+parseRSE
+findFileSam
+stripEvent
+
+
+#if [ ]; the
+#fi
+
+exit 0
+
+// This tells emacs to view this file in c++ mode.
+// Local Variables:
+// mode:shell
+// End:

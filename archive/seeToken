@@ -3,5 +3,27 @@
 # decode and print bearer token from standard location
 #
 
-httokendecode "$@"
+check_date() {
+    EXP=$(httokendecode 2> /dev/null | jq -Mr .exp)
+    [ ! "$EXP" ] && return 1
+    NOW=$(date +%s)
+    if [ $EXP -gt $NOW ]; then
+        return 0
+    else
+        return 1
+    fi
+}
 
+httokendecode "$@"
+RCH=$?
+
+check_date
+RCD=$?
+
+# htd sometimes returns fatal error for non-fatal error
+# OK if htd says OK, or if expiration date can be shown to be OK
+if [[ $RCH -eq 0 || $RCD -eq 0 ]]; then
+    exit 0
+else
+    exit 1
+fi

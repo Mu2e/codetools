@@ -2,8 +2,21 @@
 #
 # run htgettoken to generate a vault token or bearer token as needed
 #
-if [ "$USER" == "mu2epro" ]; then
-    htgettoken -i mu2e --vaultserver htvaultprod.fnal.gov -r production "$@"
+TUSER="$(id -un)"
+if [[ "$TUSER" == "mu2epro" || "$TUSER" == "mu2eraw" ]]; then
+    UCHECK="$(klist 2>/dev/null | grep "Default principal" | grep $TUSER )"
+    if [ -z "$UCHECK" ]; then
+        echo "Error - could not confirm $TUSER kerberos identity"
+        exit 1
+    fi
+    if [ "$TUSER" == "mu2epro" ]; then
+        export HTGETTOKENOPTS="--credkey=$TUSER/managedtokens/fifeutilgpvm01.fnal.gov"
+        export RFLAG=production
+    else
+        export HTGETTOKENOPTS="--credkey=$TUSER/managedtokens/fifeutilgpvm03.fnal.gov"
+        export RFLAG=raw
+    fi
+    htgettoken -i mu2e --vaultserver htvaultprod.fnal.gov -r $RFLAG "$@"
 else
     htgettoken -i mu2e --vaultserver htvaultprod.fnal.gov "$@"
 fi
