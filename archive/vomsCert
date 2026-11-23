@@ -42,6 +42,11 @@ if ! command -v cigetcert > /dev/null ; then
 fi
 
 $cicommand -i "Fermi National Accelerator Laboratory" -o $TMPP
+RC=$?
+if [ $RC -ne 0 ]; then
+    echo "Failed to get proxy - $cicommand returned $RC"
+    exit 1
+fi
 
 echo "[ $(date) ] show x509"
 voms-proxy-info -file $TMPP
@@ -50,6 +55,11 @@ echo "[ $(date) ] make voms proxy"
 voms-proxy-init -hours 120 -noregen -rfc \
   -voms fermilab:/fermilab/mu2e/Role=Analysis \
   -cert $TMPP -out $TMPV
+RC=$?
+if [ $RC -ne 0 ]; then
+    echo "Failed to get voms proxy - voms-proxy-init returned $RC"
+    exit 1
+fi
 
 echo "[ $(date) ] mv to $FINV"
 mv $TMPV $FINV

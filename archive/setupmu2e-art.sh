@@ -3,6 +3,8 @@
 # Setup the Mu2e environment; this script does not setup
 # any release of the Mu2e software.
 #
+# during transition to spack support gen2, an argument of "2"
+# will setup gen2
 #
 
 # jump out if this has already been run
@@ -36,17 +38,16 @@ export -f unsetup
 
 # this is separate from above so that it can be set by the user on sl7
 if [ "$MU2E_SPACK" ]; then
-    source /cvmfs/mu2e.opensciencegrid.org/packages/setup-env.sh
-    if [ "$MU2E_OSNAME" == "al9" ]; then
-	spack load git/q3orrja
-	spack load muse/27fo4tz
-	source $MUSE_DIR/bin/museDefine.sh
-    else
-	spack load git/wzyi4om
-	setup muse
-    fi
-    spack_load_current() { spack load $1/$(spack_current_hash $1);}
-    slc() { spack_load_current "$@";}
+    source /cvmfs/mu2e.opensciencegrid.org/spackages/241207/spack/setup-env.sh
+    source /cvmfs/mu2e.opensciencegrid.org/bin/smack.sh functions
+    #source /cvmfs/mu2e.opensciencegrid.org/packages/setup-env.sh
+    spack load git/q3orrja
+    #spack load muse/di7thnq
+    spack load muse/rfqcnx6
+    source $MUSE_DIR/bin/museDefine.sh
+
+    spack_load_current() { spack load $(spack_current.sh $1); }
+    slc() { spack load $(spack_current.sh $1); }
     export -f spack_load_current slc
     export METACAT_SERVER_URL="https://metacat.fnal.gov:9443/mu2e_meta_prod/app"
     export METACAT_AUTH_SERVER_URL="https://metacat.fnal.gov:8143/auth/mu2e"
@@ -83,7 +84,6 @@ export JOBSUB_GROUP=mu2e
 # make sure the default man paths are included (path starts with ":")
 [ "${MANPATH:0:1}" != ":" ] && export MANPATH=":"$MANPATH
 
-# Function for Python environment activatation 
 pyenv() {
   source "/cvmfs/mu2e.opensciencegrid.org/bin/pyenv.sh"
 }

@@ -34,7 +34,7 @@ done
 
 if [ "$xuser" == "$USER" ]; then
     QLINEB=$(quota -umw -f /nashome | grep /home)
-    USEB=$(echo $QLINEB | awk '{print $2}')
+    USEB=$(echo $QLINEB | awk '{print $2}' | tr -d '*')
     QUOTAB=$(echo $QLINEB | awk '{print $4}')
     QUOTA=$((QUOTAB/1000))
     USE=$((USEB/1000))
